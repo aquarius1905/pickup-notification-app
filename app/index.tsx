@@ -1,3 +1,4 @@
+import React from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -6,11 +7,32 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ServiceUserItem } from "../components/ServiceUserItem";
 import { useServiceUsers } from "../hooks/useServiceUsers";
+
+type NotifyButtonProps = {
+  label: string;
+  buttonStyle: object;
+  onPress: () => void;
+  disabled: boolean;
+};
+
+function NotifyButton({ label, buttonStyle, onPress, disabled }: NotifyButtonProps) {
+  return (
+    <TouchableOpacity
+      style={[styles.button, buttonStyle, disabled && styles.disabledButton]}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      {disabled ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <Text style={styles.buttonText}>{label}</Text>
+      )}
+    </TouchableOpacity>
+  );
+}
 
 export default function HomeScreen() {
   const { users, selectedUser, setSelectedUser, fetching, sending, notify } =
@@ -44,29 +66,18 @@ export default function HomeScreen() {
 
       {selectedUser && (
         <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[styles.button, styles.departButton, sending && styles.disabledButton]}
+          <NotifyButton
+            label="出発"
+            buttonStyle={styles.departButton}
             onPress={() => notify("depart")}
             disabled={sending}
-          >
-            {sending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>出発</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.arriveButton, sending && styles.disabledButton]}
+          />
+          <NotifyButton
+            label="到着"
+            buttonStyle={styles.arriveButton}
             onPress={() => notify("arrive")}
             disabled={sending}
-          >
-            {sending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>到着</Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
       )}
 
