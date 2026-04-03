@@ -6,6 +6,25 @@ import {
   sendPickupNotification,
 } from "../lib/api";
 
+function getErrorMessage(error: unknown): string {
+  if (
+    error instanceof TypeError &&
+    error.message === "Network request failed"
+  ) {
+    return "ネットワークに接続できません。電波状況を確認してください。";
+  }
+  if (error instanceof Error) {
+    if (error.message.includes("401")) {
+      return "認証に失敗しました。アプリを再起動してください。";
+    }
+    if (error.message.includes("500")) {
+      return "サーバーエラーが発生しました。時間をおいて再試行してください。";
+    }
+    return error.message;
+  }
+  return "予期しないエラーが発生しました。";
+}
+
 export function useServiceUsers() {
   const [users, setUsers] = useState<ServiceUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
@@ -15,7 +34,7 @@ export function useServiceUsers() {
   useEffect(() => {
     fetchServiceUsers()
       .then(setUsers)
-      .catch(() => Alert.alert("エラー", "通信エラーが発生しました"))
+      .catch((error) => Alert.alert("エラー", getErrorMessage(error)))
       .finally(() => setFetching(false));
   }, []);
 
@@ -29,12 +48,19 @@ export function useServiceUsers() {
       await sendPickupNotification(selectedUser, eventType);
       const label = eventType === "depart" ? "出発" : "到着";
       Alert.alert("送信成功", `${selectedUser}さんの${label}通知を送りました`);
-    } catch {
-      Alert.alert("エラー", "通知送信に失敗しました");
+    } catch (error) {
+      Alert.alert("通知失敗", getErrorMessage(error));
     } finally {
       setSending(false);
     }
   };
 
-  return { users, selectedUser, setSelectedUser, fetching, sending, notify } as const;
+  return {
+    users,
+    selectedUser,
+    setSelectedUser,
+    fetching,
+    sending,
+    notify,
+  } as const;
 }
