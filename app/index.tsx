@@ -1,4 +1,3 @@
-import React from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -7,8 +6,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
+import React from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ServiceUserItem } from "../components/ServiceUserItem";
 import { useServiceUsers } from "../hooks/useServiceUsers";
 
@@ -49,7 +49,11 @@ export default function HomeScreen() {
             onPress={() => notify("depart")}
             disabled={sending}
           >
-            <Text style={styles.buttonText}>出発</Text>
+            {sending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>出発</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -57,9 +61,17 @@ export default function HomeScreen() {
             onPress={() => notify("arrive")}
             disabled={sending}
           >
-            <Text style={styles.buttonText}>到着</Text>
+            {sending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>到着</Text>
+            )}
           </TouchableOpacity>
         </View>
+      )}
+
+      {sending && (
+        <Text style={styles.sendingText}>通知を送信中...</Text>
       )}
     </SafeAreaView>
   );
@@ -95,6 +107,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 50,
   },
   departButton: {
     backgroundColor: "#2563eb",
@@ -109,5 +123,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+  sendingText: {
+    textAlign: "center",
+    marginTop: 12,
+    color: "#666",
+    fontSize: 14,
   },
 });
