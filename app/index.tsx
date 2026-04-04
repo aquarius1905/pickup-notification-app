@@ -53,7 +53,7 @@ export default function HomeScreen() {
       <Text style={styles.sectionTitle}>利用者を選択</Text>
       <FlatList
         data={users}
-        keyExtractor={(item) => item.patient_name}
+        keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <ServiceUserItem
             name={item.patient_name}

@@ -1,0 +1,9 @@
+name = "pickup-notification-worker"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# Cloudflareダッシュボードで設定済みの環境変数（secretsとして管理）
+# wrangler secret put SUPABASE_URL
+# wrangler secret put SUPABASE_API_KEY
+# wrangler secret put LINE_TOKEN
+# wrangler secret put WORKER_SECRET
