@@ -8,8 +8,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ServiceUserItem } from "../components/ServiceUserItem";
-import { useServiceUsers } from "../hooks/useServiceUsers";
+import { ServiceUserItem } from "../../components/ServiceUserItem";
+import { useServiceUsers } from "../../hooks/useServiceUsers";
 
 type NotifyButtonProps = {
   label: string;

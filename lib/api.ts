@@ -1,7 +1,7 @@
 const WORKER_URL = process.env.EXPO_PUBLIC_WORKER_URL!;
 
 export type ServiceUser = {
-  id: number;
+  id: string;
   /** APIレスポンスのフィールド名（バックエンド由来） */
   patient_name: string;
   line_user_id: string;
@@ -67,7 +67,7 @@ export async function createServiceUser(
 }
 
 export async function updateServiceUser(
-  id: number,
+  id: string,
   patientName?: string,
   lineUserId?: string,
 ): Promise<ServiceUser> {
@@ -83,7 +83,7 @@ export async function updateServiceUser(
   return data.family;
 }
 
-export async function deleteServiceUser(id: number): Promise<void> {
+export async function deleteServiceUser(id: string): Promise<void> {
   const response = await fetch(WORKER_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
