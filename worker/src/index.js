@@ -12,32 +12,44 @@ export default {
         apikey: env.SUPABASE_API_KEY,
         Authorization: `Bearer ${env.SUPABASE_API_KEY}`,
         'Content-Type': 'application/json',
-        'x-worker-secret': env.WORKER_SECRET,
       };
+
+      // APIキー認証 → 施設を特定
+      const apiKey = request.headers.get('x-api-key');
+      if (!apiKey) {
+        return jsonResponse({ ok: false, error: 'APIキーが必要です' }, 401);
+      }
+
+      const facility = await authenticateFacility(apiKey, env, supabaseHeaders);
+      if (!facility) {
+        return jsonResponse({ ok: false, error: '無効なAPIキーです' }, 401);
+      }
+
+      const facilityId = facility.id;
 
       // 利用者一覧取得
       if (action === 'list') {
-        return handleList(env, supabaseHeaders);
+        return handleList(facilityId, env, supabaseHeaders);
       }
 
       // 通知送信
       if (action === 'notify') {
-        return handleNotify(body, env, supabaseHeaders);
+        return handleNotify(body, facilityId, env, supabaseHeaders);
       }
 
       // 利用者追加
       if (action === 'create') {
-        return handleCreate(body, env, supabaseHeaders);
+        return handleCreate(body, facilityId, env, supabaseHeaders);
       }
 
       // 利用者更新
       if (action === 'update') {
-        return handleUpdate(body, env, supabaseHeaders);
+        return handleUpdate(body, facilityId, env, supabaseHeaders);
       }
 
       // 利用者削除（論理削除）
       if (action === 'delete') {
-        return handleDelete(body, env, supabaseHeaders);
+        return handleDelete(body, facilityId, env, supabaseHeaders);
       }
 
       return jsonResponse({ ok: false, error: 'invalid action' }, 400);
@@ -56,22 +68,34 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+async function authenticateFacility(apiKey, env, headers) {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/facilities?api_key=eq.${encodeURIComponent(apiKey)}&is_active=eq.true&select=id,name&limit=1`,
+    { method: 'GET', headers }
+  );
+  const facilities = await res.json();
+  if (!Array.isArray(facilities) || facilities.length === 0) {
+    return null;
+  }
+  return facilities[0];
+}
+
 // --- アクションハンドラ ---
 
-async function handleList(env, headers) {
+async function handleList(facilityId, env, headers) {
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?is_active=eq.true&select=id,patient_name,line_user_id&order=patient_name.asc`,
+    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,patient_name,line_user_id&order=patient_name.asc`,
     { method: 'GET', headers }
   );
   const families = await res.json();
   return jsonResponse({ ok: true, families });
 }
 
-async function handleNotify(body, env, headers) {
+async function handleNotify(body, facilityId, env, headers) {
   const { patientName, eventType } = body;
 
   const familyRes = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?patient_name=eq.${encodeURIComponent(patientName)}&is_active=eq.true&select=id,line_user_id,patient_name`,
+    `${env.SUPABASE_URL}/rest/v1/families?patient_name=eq.${encodeURIComponent(patientName)}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,patient_name`,
     { method: 'GET', headers }
   );
   const families = await familyRes.json();
@@ -126,7 +150,7 @@ async function handleNotify(body, env, headers) {
   });
 }
 
-async function handleCreate(body, env, headers) {
+async function handleCreate(body, facilityId, env, headers) {
   const { patientName, lineUserId } = body;
 
   if (!patientName || !patientName.trim()) {
@@ -140,6 +164,7 @@ async function handleCreate(body, env, headers) {
       patient_name: patientName.trim(),
       line_user_id: lineUserId || '',
       is_active: true,
+      facility_id: facilityId,
     }),
   });
 
@@ -152,7 +177,7 @@ async function handleCreate(body, env, headers) {
   return jsonResponse({ ok: true, family: created[0] }, 201);
 }
 
-async function handleUpdate(body, env, headers) {
+async function handleUpdate(body, facilityId, env, headers) {
   const { id, patientName, lineUserId } = body;
 
   if (!id) {
@@ -168,7 +193,7 @@ async function handleUpdate(body, env, headers) {
   }
 
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?id=eq.${id}`,
+    `${env.SUPABASE_URL}/rest/v1/families?id=eq.${id}&facility_id=eq.${facilityId}`,
     {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=representation' },
@@ -189,7 +214,7 @@ async function handleUpdate(body, env, headers) {
   return jsonResponse({ ok: true, family: updated[0] });
 }
 
-async function handleDelete(body, env, headers) {
+async function handleDelete(body, facilityId, env, headers) {
   const { id } = body;
 
   if (!id) {
@@ -198,7 +223,7 @@ async function handleDelete(body, env, headers) {
 
   // 論理削除（is_active を false に）
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?id=eq.${id}`,
+    `${env.SUPABASE_URL}/rest/v1/families?id=eq.${id}&facility_id=eq.${facilityId}`,
     {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=representation' },

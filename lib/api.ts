@@ -1,4 +1,10 @@
 const WORKER_URL = process.env.EXPO_PUBLIC_WORKER_URL!;
+const API_KEY = process.env.EXPO_PUBLIC_API_KEY!;
+
+const defaultHeaders: HeadersInit = {
+  "Content-Type": "application/json",
+  "x-api-key": API_KEY,
+};
 
 export type ServiceUser = {
   id: string;
@@ -25,7 +31,7 @@ type MutationResponse = {
 export async function fetchServiceUsers(): Promise<ServiceUser[]> {
   const response = await fetch(WORKER_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: defaultHeaders,
     body: JSON.stringify({ action: "list" }),
   });
   const data: ListResponse = await response.json();
@@ -41,7 +47,7 @@ export async function sendPickupNotification(
 ): Promise<void> {
   const response = await fetch(WORKER_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: defaultHeaders,
     body: JSON.stringify({ action: "notify", patientName: userName, eventType }),
   });
   const data: NotifyResponse = await response.json();
@@ -56,7 +62,7 @@ export async function createServiceUser(
 ): Promise<ServiceUser> {
   const response = await fetch(WORKER_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: defaultHeaders,
     body: JSON.stringify({ action: "create", patientName, lineUserId }),
   });
   const data: MutationResponse = await response.json();
@@ -73,7 +79,7 @@ export async function updateServiceUser(
 ): Promise<ServiceUser> {
   const response = await fetch(WORKER_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: defaultHeaders,
     body: JSON.stringify({ action: "update", id, patientName, lineUserId }),
   });
   const data: MutationResponse = await response.json();
@@ -86,7 +92,7 @@ export async function updateServiceUser(
 export async function deleteServiceUser(id: string): Promise<void> {
   const response = await fetch(WORKER_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: defaultHeaders,
     body: JSON.stringify({ action: "delete", id }),
   });
   const data: MutationResponse = await response.json();
