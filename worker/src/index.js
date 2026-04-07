@@ -4,15 +4,22 @@ export default {
       return new Response('Method Not Allowed', { status: 405 });
     }
 
+    const url = new URL(request.url);
+
+    const supabaseHeaders = {
+      apikey: env.SUPABASE_API_KEY,
+      Authorization: `Bearer ${env.SUPABASE_API_KEY}`,
+      'Content-Type': 'application/json',
+    };
+
+    // LINE Webhook（友達追加・メッセージ受信）
+    if (url.pathname === '/webhook') {
+      return handleLineWebhook(request, env, supabaseHeaders);
+    }
+
     try {
       const body = await request.json();
       const { action } = body;
-
-      const supabaseHeaders = {
-        apikey: env.SUPABASE_API_KEY,
-        Authorization: `Bearer ${env.SUPABASE_API_KEY}`,
-        'Content-Type': 'application/json',
-      };
 
       // APIキー認証 → 施設を特定
       const apiKey = request.headers.get('x-api-key');
@@ -68,6 +75,15 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+function generateInviteCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
 async function authenticateFacility(apiKey, env, headers) {
   const res = await fetch(
     `${env.SUPABASE_URL}/rest/v1/facilities?api_key=eq.${encodeURIComponent(apiKey)}&is_active=eq.true&select=id,name&limit=1`,
@@ -84,7 +100,7 @@ async function authenticateFacility(apiKey, env, headers) {
 
 async function handleList(facilityId, env, headers) {
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,patient_name,line_user_id&order=patient_name.asc`,
+    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,patient_name,line_user_id,invite_code&order=patient_name.asc`,
     { method: 'GET', headers }
   );
   const families = await res.json();
@@ -165,6 +181,7 @@ async function handleCreate(body, facilityId, env, headers) {
       line_user_id: lineUserId || '',
       is_active: true,
       facility_id: facilityId,
+      invite_code: generateInviteCode(),
     }),
   });
 
@@ -242,4 +259,105 @@ async function handleDelete(body, facilityId, env, headers) {
   }
 
   return jsonResponse({ ok: true });
+}
+
+// --- LINE Webhook ---
+
+async function verifyLineSignature(request, body, channelSecret) {
+  const signature = request.headers.get('x-line-signature');
+  if (!signature) return false;
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(channelSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  const expected = btoa(String.fromCharCode(...new Uint8Array(sig)));
+  return expected === signature;
+}
+
+async function replyLineMessage(replyToken, text, env) {
+  await fetch('https://api.line.me/v2/bot/message/reply', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.LINE_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      replyToken,
+      messages: [{ type: 'text', text }],
+    }),
+  });
+}
+
+async function handleLineWebhook(request, env, headers) {
+  const bodyText = await request.text();
+
+  // 署名検証
+  const valid = await verifyLineSignature(request, bodyText, env.LINE_CHANNEL_SECRET);
+  if (!valid) {
+    return new Response('Invalid signature', { status: 401 });
+  }
+
+  const body = JSON.parse(bodyText);
+  const events = body.events || [];
+
+  for (const event of events) {
+    if (event.type === 'follow') {
+      // 友達追加：使い方を案内
+      await replyLineMessage(
+        event.replyToken,
+        '友だち追加ありがとうございます！\n施設からお伝えされた招待コード（6文字）をこのトークに送信してください。',
+        env
+      );
+    } else if (event.type === 'message' && event.message?.type === 'text') {
+      const text = event.message.text.trim().toUpperCase();
+      const lineUserId = event.source?.userId;
+
+      if (!lineUserId) continue;
+
+      // 招待コードで利用者を検索
+      const familyRes = await fetch(
+        `${env.SUPABASE_URL}/rest/v1/families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,patient_name`,
+        { method: 'GET', headers }
+      );
+      const families = await familyRes.json();
+
+      if (!Array.isArray(families) || families.length === 0) {
+        await replyLineMessage(
+          event.replyToken,
+          '招待コードが見つかりません。\nコードをご確認のうえ、もう一度送信してください。',
+          env
+        );
+        continue;
+      }
+
+      const family = families[0];
+
+      // line_user_idを紐付け
+      const updateRes = await fetch(
+        `${env.SUPABASE_URL}/rest/v1/families?id=eq.${family.id}`,
+        {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({ line_user_id: lineUserId }),
+        }
+      );
+
+      if (updateRes.ok) {
+        await replyLineMessage(
+          event.replyToken,
+          `${family.patient_name}さんの登録が完了しました。\n送迎の通知をお届けします。`,
+          env
+        );
+      } else {
+        await replyLineMessage(event.replyToken, '登録に失敗しました。施設にお問い合わせください。', env);
+      }
+    }
+  }
+
+  return new Response('OK', { status: 200 });
 }

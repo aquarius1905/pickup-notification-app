@@ -11,6 +11,7 @@ export type ServiceUser = {
   /** APIレスポンスのフィールド名（バックエンド由来） */
   patient_name: string;
   line_user_id: string;
+  invite_code: string;
 };
 
 type ListResponse = {
