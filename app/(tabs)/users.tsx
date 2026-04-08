@@ -147,9 +147,13 @@ export default function UsersScreen() {
             <View style={styles.userRow}>
               <View style={styles.userInfo}>
                 <Text style={styles.userName}>{item.patient_name}</Text>
-                <Text style={styles.userLineId}>
-                  {item.line_user_id || "LINE未設定"}
-                </Text>
+                {item.line_user_id ? (
+                  <Text style={styles.linkedBadge}>LINE連携済み</Text>
+                ) : (
+                  <Text style={styles.inviteCode}>
+                    招待コード: {item.invite_code}
+                  </Text>
+                )}
               </View>
               <View style={styles.userActions}>
                 <TouchableOpacity onPress={() => startEdit(item)}>
@@ -243,10 +247,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
-  userLineId: {
+  linkedBadge: {
     fontSize: 13,
-    color: "#999",
+    color: "#16a34a",
+    fontWeight: "600",
     marginTop: 2,
+  },
+  inviteCode: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+    fontFamily: "monospace",
   },
   userActions: {
     flexDirection: "row",
