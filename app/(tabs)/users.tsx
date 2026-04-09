@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   type ServiceUser,
@@ -150,9 +151,16 @@ export default function UsersScreen() {
                 {item.line_user_id ? (
                   <Text style={styles.linkedBadge}>LINE連携済み</Text>
                 ) : (
-                  <Text style={styles.inviteCode}>
-                    招待コード: {item.invite_code}
-                  </Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await Clipboard.setStringAsync(item.invite_code);
+                      Alert.alert("コピーしました", `招待コード: ${item.invite_code}`);
+                    }}
+                  >
+                    <Text style={styles.inviteCode}>
+                      招待コード: {item.invite_code}（タップでコピー）
+                    </Text>
+                  </TouchableOpacity>
                 )}
               </View>
               <View style={styles.userActions}>
