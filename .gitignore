@@ -37,6 +37,9 @@ yarn-error.*
 # Cloudflare Workers
 .dev.vars
 
+# Claude Code
+.claude/
+
 # typescript
 *.tsbuildinfo
 
