@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -26,6 +27,7 @@ export default function UsersScreen() {
   const [lineId, setLineId] = useState("");
   const [editingUser, setEditingUser] = useState<ServiceUser | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -42,6 +44,18 @@ export default function UsersScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      const data = await fetchServiceUsers();
+      setUsers(data);
+    } catch {
+      Alert.alert("エラー", "利用者一覧の取得に失敗しました");
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const resetForm = () => {
     setName("");
@@ -174,6 +188,9 @@ export default function UsersScreen() {
             </View>
           )}
           style={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
         />
       )}
     </SafeAreaView>
