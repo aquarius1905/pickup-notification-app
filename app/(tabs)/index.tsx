@@ -2,6 +2,7 @@ import React from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -35,7 +36,7 @@ function NotifyButton({ label, buttonStyle, onPress, disabled }: NotifyButtonPro
 }
 
 export default function HomeScreen() {
-  const { users, selectedUser, setSelectedUser, fetching, sending, notify } =
+  const { users, selectedUser, setSelectedUser, fetching, refreshing, refresh, sending, notify } =
     useServiceUsers();
 
   if (fetching) {
@@ -62,6 +63,9 @@ export default function HomeScreen() {
           />
         )}
         style={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
+        }
       />
 
       {selectedUser && (

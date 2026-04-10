@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import {
   type ServiceUser,
@@ -30,12 +30,25 @@ export function useServiceUsers() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [sending, setSending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchServiceUsers()
       .then(setUsers)
       .catch((error) => Alert.alert("エラー", getErrorMessage(error)))
       .finally(() => setFetching(false));
+  }, []);
+
+  const refresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      const data = await fetchServiceUsers();
+      setUsers(data);
+    } catch (error) {
+      Alert.alert("エラー", getErrorMessage(error));
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   const notify = async (eventType: "depart" | "arrive") => {
@@ -60,6 +73,8 @@ export function useServiceUsers() {
     selectedUser,
     setSelectedUser,
     fetching,
+    refreshing,
+    refresh,
     sending,
     notify,
   } as const;
