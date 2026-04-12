@@ -1,50 +1,52 @@
-# Welcome to your Expo app 👋
+# 送迎通知アプリ
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+デイサービス施設の職員が、利用者の送迎状況（出発・到着）をご家族のLINEに通知するアプリです。
 
-## Get started
+## 構成
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+Expo (React Native) → Cloudflare Worker → Supabase (DB)
+                                        → LINE Messaging API (通知)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- **フロントエンド**: Expo / React Native（iOS / Android）
+- **バックエンド**: Cloudflare Workers
+- **データベース**: Supabase (PostgreSQL)
+- **通知**: LINE Messaging API
 
-## Learn more
+## 機能
 
-To learn more about developing your project with Expo, look at the following resources:
+- 利用者を選択して出発・到着通知をLINEで送信
+- 利用者の追加・編集・削除
+- 招待コードによるLINE連携（家族が友だち追加→コード送信で自動紐付け）
+- 施設ごとのAPIキー認証（マルチ施設対応）
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## セットアップ
 
-## Join the community
+### アプリ
 
-Join our community of developers creating universal apps.
+```bash
+npm install
+cp .env.example .env  # 環境変数を設定
+npx expo start
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Worker
+
+```bash
+cd worker
+npm install
+npx wrangler login
+npx wrangler secret put SUPABASE_URL
+npx wrangler secret put SUPABASE_API_KEY
+npx wrangler secret put LINE_TOKEN
+npx wrangler secret put LINE_CHANNEL_SECRET
+npx wrangler deploy
+```
+
+### 環境変数（アプリ側 `.env`）
+
+| 変数名 | 説明 |
+|--------|------|
+| `EXPO_PUBLIC_WORKER_URL` | Cloudflare WorkerのURL |
+| `EXPO_PUBLIC_API_KEY` | 施設のAPIキー |
