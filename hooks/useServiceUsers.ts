@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
+import * as Burnt from "burnt";
 import {
   type ServiceUser,
   fetchServiceUsers,
@@ -25,12 +26,15 @@ function getErrorMessage(error: unknown): string {
   return "予期しないエラーが発生しました。";
 }
 
+export type NotifyStatus = Record<string, Set<"depart" | "arrive">>;
+
 export function useServiceUsers() {
   const [users, setUsers] = useState<ServiceUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [notified, setNotified] = useState<NotifyStatus>({});
 
   useEffect(() => {
     fetchServiceUsers()
@@ -61,7 +65,15 @@ export function useServiceUsers() {
       await sendPickupNotification(selectedUser, eventType);
       const label = eventType === "depart" ? "出発" : "到着";
       setSelectedUser(null);
-      Alert.alert("送信成功", `${selectedUser}さんの${label}通知を送りました`);
+      Burnt.toast({
+        title: `${selectedUser}さんの${label}通知を送りました`,
+        preset: "done",
+      });
+      setNotified((prev) => {
+        const set = new Set(prev[selectedUser] ?? []);
+        set.add(eventType);
+        return { ...prev, [selectedUser]: set };
+      });
     } catch (error) {
       Alert.alert("通知失敗", getErrorMessage(error));
     } finally {
@@ -78,5 +90,6 @@ export function useServiceUsers() {
     refresh,
     sending,
     notify,
+    notified,
   } as const;
 }

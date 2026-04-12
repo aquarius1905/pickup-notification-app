@@ -36,7 +36,7 @@ function NotifyButton({ label, buttonStyle, onPress, disabled }: NotifyButtonPro
 }
 
 export default function HomeScreen() {
-  const { users, selectedUser, setSelectedUser, fetching, refreshing, refresh, sending, notify } =
+  const { users, selectedUser, setSelectedUser, fetching, refreshing, refresh, sending, notify, notified } =
     useServiceUsers();
 
   if (fetching) {
@@ -60,6 +60,7 @@ export default function HomeScreen() {
             name={item.patient_name}
             selected={selectedUser === item.patient_name}
             onSelect={setSelectedUser}
+            notifiedTypes={notified[item.patient_name]}
           />
         )}
         style={styles.list}
