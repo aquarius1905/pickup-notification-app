@@ -60,6 +60,7 @@ export function useServiceUsers() {
       setSending(true);
       await sendPickupNotification(selectedUser, eventType);
       const label = eventType === "depart" ? "出発" : "到着";
+      setSelectedUser(null);
       Alert.alert("送信成功", `${selectedUser}さんの${label}通知を送りました`);
     } catch (error) {
       Alert.alert("通知失敗", getErrorMessage(error));
