@@ -64,6 +64,11 @@ export default function HomeScreen() {
           />
         )}
         style={styles.list}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>
+            利用者が登録されていません。{"\n"}「利用者管理」タブから追加してください。
+          </Text>
+        }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} />
         }
@@ -145,5 +150,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: "#666",
     fontSize: 14,
+  },
+  emptyText: {
+    textAlign: "center",
+    color: "#999",
+    fontSize: 14,
+    marginTop: 32,
+    lineHeight: 22,
   },
 });

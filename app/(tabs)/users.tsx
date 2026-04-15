@@ -188,6 +188,11 @@ export default function UsersScreen() {
             </View>
           )}
           style={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              利用者が登録されていません。{"\n"}上のフォームから追加してください。
+            </Text>
+          }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
@@ -297,5 +302,12 @@ const styles = StyleSheet.create({
     color: "#dc2626",
     fontSize: 14,
     fontWeight: "600",
+  },
+  emptyText: {
+    textAlign: "center",
+    color: "#999",
+    fontSize: 14,
+    marginTop: 32,
+    lineHeight: 22,
   },
 });
