@@ -70,6 +70,12 @@ export function useServiceUsers() {
         preset: "done",
       });
       setNotified((prev) => {
+        if (eventType === "arrive") {
+          // 到着通知でサイクル完了 → バッジをリセット
+          const next = { ...prev };
+          delete next[selectedUser];
+          return next;
+        }
         const set = new Set(prev[selectedUser] ?? []);
         set.add(eventType);
         return { ...prev, [selectedUser]: set };
