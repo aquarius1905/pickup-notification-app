@@ -3,6 +3,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -115,6 +117,10 @@ export default function UsersScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
       <Text style={styles.title}>利用者管理</Text>
 
       <View style={styles.form}>
@@ -198,6 +204,7 @@ export default function UsersScreen() {
           }
         />
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -206,6 +213,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  keyboardView: {
+    flex: 1,
     padding: 24,
   },
   title: {
