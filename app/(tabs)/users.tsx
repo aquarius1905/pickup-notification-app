@@ -31,33 +31,26 @@ export default function UsersScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await fetchServiceUsers();
-      setUsers(data);
-    } catch {
-      Alert.alert("エラー", "利用者一覧の取得に失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (setLoadingFlag: (v: boolean) => void) => {
+      try {
+        setLoadingFlag(true);
+        const data = await fetchServiceUsers();
+        setUsers(data);
+      } catch {
+        Alert.alert("エラー", "利用者一覧の取得に失敗しました");
+      } finally {
+        setLoadingFlag(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    load();
+    load(setLoading);
   }, [load]);
 
-  const handleRefresh = useCallback(async () => {
-    try {
-      setRefreshing(true);
-      const data = await fetchServiceUsers();
-      setUsers(data);
-    } catch {
-      Alert.alert("エラー", "利用者一覧の取得に失敗しました");
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
+  const handleRefresh = useCallback(() => load(setRefreshing), [load]);
 
   const resetForm = () => {
     setName("");
@@ -84,7 +77,7 @@ export default function UsersScreen() {
         await createServiceUser(name.trim(), lineId.trim());
       }
       resetForm();
-      await load();
+      await load(setLoading);
     } catch (error) {
       Alert.alert("エラー", error instanceof Error ? error.message : "保存に失敗しました");
     } finally {
@@ -105,7 +98,7 @@ export default function UsersScreen() {
             try {
               await deleteServiceUser(user.id);
               if (editingUser?.id === user.id) resetForm();
-              await load();
+              await load(setLoading);
             } catch (error) {
               Alert.alert("エラー", error instanceof Error ? error.message : "削除に失敗しました");
             }
