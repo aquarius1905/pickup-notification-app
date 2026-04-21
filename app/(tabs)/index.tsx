@@ -50,6 +50,9 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>送迎通知</Text>
+      <Text style={styles.dateText}>
+        {new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+      </Text>
 
       <Text style={styles.sectionTitle}>利用者を選択</Text>
       <FlatList
@@ -107,6 +110,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
+    marginBottom: 4,
+  },
+  dateText: {
+    fontSize: 14,
+    color: "#666",
     marginBottom: 24,
   },
   sectionTitle: {
