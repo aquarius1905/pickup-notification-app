@@ -14,62 +14,60 @@ export type ServiceUser = {
   invite_code: string;
 };
 
-type ListResponse = {
+type WorkerResponse = {
   ok: boolean;
-  families: ServiceUser[];
-};
-
-type NotifyResponse = {
-  ok: boolean;
-};
-
-type MutationResponse = {
-  ok: boolean;
-  family?: ServiceUser;
   error?: string;
+  families?: ServiceUser[];
+  family?: ServiceUser;
 };
 
-export async function fetchServiceUsers(): Promise<ServiceUser[]> {
+/**
+ * Workerにリクエストを送る共通関数
+ * @throws 通信失敗時・okがfalseの時にErrorを投げる
+ */
+async function callWorker(
+  action: string,
+  params: Record<string, unknown> = {},
+  errorMessage: string,
+): Promise<WorkerResponse> {
   const response = await fetch(WORKER_URL, {
     method: "POST",
     headers: defaultHeaders,
-    body: JSON.stringify({ action: "list" }),
+    body: JSON.stringify({ action, ...params }),
   });
-  const data: ListResponse = await response.json();
-  if (!data.ok) {
-    throw new Error("利用者一覧の取得に失敗しました");
+  const data: WorkerResponse = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error ?? errorMessage);
   }
-  return data.families;
+  return data;
+}
+
+export async function fetchServiceUsers(): Promise<ServiceUser[]> {
+  const data = await callWorker("list", {}, "利用者一覧の取得に失敗しました");
+  return data.families ?? [];
 }
 
 export async function sendPickupNotification(
   userName: string,
   eventType: "depart" | "arrive",
 ): Promise<void> {
-  const response = await fetch(WORKER_URL, {
-    method: "POST",
-    headers: defaultHeaders,
-    body: JSON.stringify({ action: "notify", patientName: userName, eventType }),
-  });
-  const data: NotifyResponse = await response.json();
-  if (!response.ok || !data.ok) {
-    throw new Error("通知送信に失敗しました");
-  }
+  await callWorker(
+    "notify",
+    { patientName: userName, eventType },
+    "通知送信に失敗しました",
+  );
 }
 
 export async function createServiceUser(
   patientName: string,
   lineUserId?: string,
 ): Promise<ServiceUser> {
-  const response = await fetch(WORKER_URL, {
-    method: "POST",
-    headers: defaultHeaders,
-    body: JSON.stringify({ action: "create", patientName, lineUserId }),
-  });
-  const data: MutationResponse = await response.json();
-  if (!response.ok || !data.ok || !data.family) {
-    throw new Error(data.error ?? "利用者の追加に失敗しました");
-  }
+  const data = await callWorker(
+    "create",
+    { patientName, lineUserId },
+    "利用者の追加に失敗しました",
+  );
+  if (!data.family) throw new Error("利用者の追加に失敗しました");
   return data.family;
 }
 
@@ -78,26 +76,15 @@ export async function updateServiceUser(
   patientName?: string,
   lineUserId?: string,
 ): Promise<ServiceUser> {
-  const response = await fetch(WORKER_URL, {
-    method: "POST",
-    headers: defaultHeaders,
-    body: JSON.stringify({ action: "update", id, patientName, lineUserId }),
-  });
-  const data: MutationResponse = await response.json();
-  if (!response.ok || !data.ok || !data.family) {
-    throw new Error(data.error ?? "利用者の更新に失敗しました");
-  }
+  const data = await callWorker(
+    "update",
+    { id, patientName, lineUserId },
+    "利用者の更新に失敗しました",
+  );
+  if (!data.family) throw new Error("利用者の更新に失敗しました");
   return data.family;
 }
 
 export async function deleteServiceUser(id: string): Promise<void> {
-  const response = await fetch(WORKER_URL, {
-    method: "POST",
-    headers: defaultHeaders,
-    body: JSON.stringify({ action: "delete", id }),
-  });
-  const data: MutationResponse = await response.json();
-  if (!response.ok || !data.ok) {
-    throw new Error(data.error ?? "利用者の削除に失敗しました");
-  }
+  await callWorker("delete", { id }, "利用者の削除に失敗しました");
 }
