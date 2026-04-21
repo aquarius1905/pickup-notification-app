@@ -36,24 +36,26 @@ export function useServiceUsers() {
   const [refreshing, setRefreshing] = useState(false);
   const [notified, setNotified] = useState<NotifyStatus>({});
 
-  useEffect(() => {
-    fetchServiceUsers()
-      .then(setUsers)
-      .catch((error) => Alert.alert("エラー", getErrorMessage(error)))
-      .finally(() => setFetching(false));
-  }, []);
+  const load = useCallback(
+    async (setLoadingFlag: (v: boolean) => void) => {
+      try {
+        setLoadingFlag(true);
+        const data = await fetchServiceUsers();
+        setUsers(data);
+      } catch (error) {
+        Alert.alert("エラー", getErrorMessage(error));
+      } finally {
+        setLoadingFlag(false);
+      }
+    },
+    [],
+  );
 
-  const refresh = useCallback(async () => {
-    try {
-      setRefreshing(true);
-      const data = await fetchServiceUsers();
-      setUsers(data);
-    } catch (error) {
-      Alert.alert("エラー", getErrorMessage(error));
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
+  useEffect(() => {
+    load(setFetching);
+  }, [load]);
+
+  const refresh = useCallback(() => load(setRefreshing), [load]);
 
   const notify = async (eventType: "depart" | "arrive") => {
     if (!selectedUser) {
