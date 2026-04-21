@@ -57,36 +57,49 @@ export function useServiceUsers() {
 
   const refresh = useCallback(() => load(setRefreshing), [load]);
 
-  const notify = async (eventType: "depart" | "arrive") => {
+  const notify = (eventType: "depart" | "arrive") => {
     if (!selectedUser) {
       Alert.alert("エラー", "利用者を選択してください");
       return;
     }
-    try {
-      setSending(true);
-      await sendPickupNotification(selectedUser, eventType);
-      const label = eventType === "depart" ? "出発" : "到着";
-      setSelectedUser(null);
-      Burnt.toast({
-        title: `${selectedUser}さんの${label}通知を送りました`,
-        preset: "done",
-      });
-      setNotified((prev) => {
-        if (eventType === "arrive") {
-          // 到着通知でサイクル完了 → バッジをリセット
-          const next = { ...prev };
-          delete next[selectedUser];
-          return next;
-        }
-        const set = new Set(prev[selectedUser] ?? []);
-        set.add(eventType);
-        return { ...prev, [selectedUser]: set };
-      });
-    } catch (error) {
-      Alert.alert("通知失敗", getErrorMessage(error));
-    } finally {
-      setSending(false);
-    }
+    const label = eventType === "depart" ? "出発" : "到着";
+    const targetUser = selectedUser;
+    Alert.alert(
+      "確認",
+      `${targetUser}さんに${label}通知を送りますか？`,
+      [
+        { text: "キャンセル", style: "cancel" },
+        {
+          text: "送信",
+          onPress: async () => {
+            try {
+              setSending(true);
+              await sendPickupNotification(targetUser, eventType);
+              setSelectedUser(null);
+              Burnt.toast({
+                title: `${targetUser}さんの${label}通知を送りました`,
+                preset: "done",
+              });
+              setNotified((prev) => {
+                if (eventType === "arrive") {
+                  // 到着通知でサイクル完了 → バッジをリセット
+                  const next = { ...prev };
+                  delete next[targetUser];
+                  return next;
+                }
+                const set = new Set(prev[targetUser] ?? []);
+                set.add(eventType);
+                return { ...prev, [targetUser]: set };
+              });
+            } catch (error) {
+              Alert.alert("通知失敗", getErrorMessage(error));
+            } finally {
+              setSending(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return {
