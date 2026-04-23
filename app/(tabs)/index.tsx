@@ -54,7 +54,7 @@ export default function HomeScreen() {
         {new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
       </Text>
 
-      <Text style={styles.sectionTitle}>利用者を選択</Text>
+      <Text style={styles.sectionTitle}>利用者を選択（{users.length}名）</Text>
       <FlatList
         data={users}
         keyExtractor={(item) => String(item.id)}

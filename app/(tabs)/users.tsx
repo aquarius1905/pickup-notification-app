@@ -115,6 +115,7 @@ export default function UsersScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
       <Text style={styles.title}>利用者管理</Text>
+      <Text style={styles.countText}>登録利用者 {users.length}名</Text>
 
       <View style={styles.form}>
         <TextInput
@@ -214,6 +215,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
+    marginBottom: 4,
+  },
+  countText: {
+    fontSize: 14,
+    color: "#666",
     marginBottom: 24,
   },
   form: {
