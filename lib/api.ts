@@ -6,12 +6,26 @@ const defaultHeaders: HeadersInit = {
   "x-api-key": API_KEY,
 };
 
+/** 通所曜日: 0=日, 1=月, 2=火, 3=水, 4=木, 5=金, 6=土 */
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
 export type ServiceUser = {
   id: string;
   /** APIレスポンスのフィールド名（バックエンド由来） */
   patient_name: string;
   line_user_id: string;
   invite_code: string;
+  weekdays: Weekday[];
+  /** "HH:MM:SS" 形式、未設定は null */
+  pickup_time: string | null;
+  dropoff_time: string | null;
+};
+
+export type ServiceUserInput = {
+  weekdays?: Weekday[];
+  /** "HH:MM" or "HH:MM:SS"、null で未設定に */
+  pickupTime?: string | null;
+  dropoffTime?: string | null;
 };
 
 type WorkerResponse = {
@@ -61,10 +75,11 @@ export async function sendPickupNotification(
 export async function createServiceUser(
   patientName: string,
   lineUserId?: string,
+  schedule?: ServiceUserInput,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "create",
-    { patientName, lineUserId },
+    { patientName, lineUserId, ...schedule },
     "利用者の追加に失敗しました",
   );
   if (!data.family) throw new Error("利用者の追加に失敗しました");
@@ -75,10 +90,11 @@ export async function updateServiceUser(
   id: string,
   patientName?: string,
   lineUserId?: string,
+  schedule?: ServiceUserInput,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "update",
-    { id, patientName, lineUserId },
+    { id, patientName, lineUserId, ...schedule },
     "利用者の更新に失敗しました",
   );
   if (!data.family) throw new Error("利用者の更新に失敗しました");

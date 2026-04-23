@@ -75,6 +75,22 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+function normalizeWeekdays(input) {
+  if (!Array.isArray(input)) return null;
+  const cleaned = [...new Set(input.map(Number))]
+    .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+    .sort((a, b) => a - b);
+  return cleaned;
+}
+
+function normalizeTime(input) {
+  if (input === null || input === '') return null;
+  if (typeof input !== 'string') return undefined; // 不正値はスキップ
+  // "HH:MM" or "HH:MM:SS" を許可
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(input)) return undefined;
+  return input.length === 5 ? `${input}:00` : input;
+}
+
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -100,7 +116,7 @@ async function authenticateFacility(apiKey, env, headers) {
 
 async function handleList(facilityId, env, headers) {
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,patient_name,line_user_id,invite_code&order=patient_name.asc`,
+    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,patient_name,line_user_id,invite_code,weekdays,pickup_time,dropoff_time&order=patient_name.asc`,
     { method: 'GET', headers }
   );
   const families = await res.json();
@@ -167,22 +183,31 @@ async function handleNotify(body, facilityId, env, headers) {
 }
 
 async function handleCreate(body, facilityId, env, headers) {
-  const { patientName, lineUserId } = body;
+  const { patientName, lineUserId, weekdays, pickupTime, dropoffTime } = body;
 
   if (!patientName || !patientName.trim()) {
     return jsonResponse({ ok: false, error: '利用者名は必須です' }, 400);
   }
 
+  const normalizedWeekdays = normalizeWeekdays(weekdays) ?? [];
+  const normalizedPickup = normalizeTime(pickupTime);
+  const normalizedDropoff = normalizeTime(dropoffTime);
+
+  const payload = {
+    patient_name: patientName.trim(),
+    line_user_id: lineUserId || '',
+    is_active: true,
+    facility_id: facilityId,
+    invite_code: generateInviteCode(),
+    weekdays: normalizedWeekdays,
+  };
+  if (normalizedPickup !== undefined) payload.pickup_time = normalizedPickup;
+  if (normalizedDropoff !== undefined) payload.dropoff_time = normalizedDropoff;
+
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/families`, {
     method: 'POST',
     headers: { ...headers, Prefer: 'return=representation' },
-    body: JSON.stringify({
-      patient_name: patientName.trim(),
-      line_user_id: lineUserId || '',
-      is_active: true,
-      facility_id: facilityId,
-      invite_code: generateInviteCode(),
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -195,7 +220,7 @@ async function handleCreate(body, facilityId, env, headers) {
 }
 
 async function handleUpdate(body, facilityId, env, headers) {
-  const { id, patientName, lineUserId } = body;
+  const { id, patientName, lineUserId, weekdays, pickupTime, dropoffTime } = body;
 
   if (!id) {
     return jsonResponse({ ok: false, error: 'idは必須です' }, 400);
@@ -204,6 +229,18 @@ async function handleUpdate(body, facilityId, env, headers) {
   const updates = {};
   if (patientName !== undefined) updates.patient_name = patientName.trim();
   if (lineUserId !== undefined) updates.line_user_id = lineUserId || '';
+  if (weekdays !== undefined) {
+    const normalized = normalizeWeekdays(weekdays);
+    if (normalized !== null) updates.weekdays = normalized;
+  }
+  if (pickupTime !== undefined) {
+    const normalized = normalizeTime(pickupTime);
+    if (normalized !== undefined) updates.pickup_time = normalized;
+  }
+  if (dropoffTime !== undefined) {
+    const normalized = normalizeTime(dropoffTime);
+    if (normalized !== undefined) updates.dropoff_time = normalized;
+  }
 
   if (Object.keys(updates).length === 0) {
     return jsonResponse({ ok: false, error: '更新するフィールドがありません' }, 400);
