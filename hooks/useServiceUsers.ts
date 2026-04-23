@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import * as Burnt from "burnt";
+import * as Haptics from "expo-haptics";
 import {
   type ServiceUser,
   fetchServiceUsers,
@@ -92,6 +93,9 @@ export function useServiceUsers() {
                 return { ...prev, [targetUser]: set };
               });
             } catch (error) {
+              await Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Error,
+              );
               Alert.alert("通知失敗", getErrorMessage(error));
             } finally {
               setSending(false);
