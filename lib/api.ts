@@ -9,23 +9,26 @@ const defaultHeaders: HeadersInit = {
 /** 通所曜日: 0=日, 1=月, 2=火, 3=水, 4=木, 5=金, 6=土 */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+/** 曜日ごとの送迎時刻。"HH:MM" 形式、未設定は null */
+export type DaySchedule = {
+  pickup: string | null;
+  dropoff: string | null;
+};
+
+/** 通所スケジュール。キーの存在する曜日 = 通所日 */
+export type Schedule = Partial<Record<`${Weekday}`, DaySchedule>>;
+
 export type ServiceUser = {
   id: string;
   /** APIレスポンスのフィールド名（バックエンド由来） */
   patient_name: string;
   line_user_id: string;
   invite_code: string;
-  weekdays: Weekday[];
-  /** "HH:MM:SS" 形式、未設定は null */
-  pickup_time: string | null;
-  dropoff_time: string | null;
+  schedule: Schedule;
 };
 
 export type ServiceUserInput = {
-  weekdays?: Weekday[];
-  /** "HH:MM" or "HH:MM:SS"、null で未設定に */
-  pickupTime?: string | null;
-  dropoffTime?: string | null;
+  schedule?: Schedule;
 };
 
 type WorkerResponse = {

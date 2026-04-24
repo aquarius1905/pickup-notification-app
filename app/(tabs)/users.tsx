@@ -15,18 +15,47 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  type Schedule,
   type ServiceUser,
+  type Weekday,
   createServiceUser,
   deleteServiceUser,
   fetchServiceUsers,
   updateServiceUser,
 } from "../../lib/api";
+import {
+  WEEKDAYS,
+  WEEKDAY_LABELS,
+  formatSchedule,
+  formatTimeForDisplay,
+  normalizeTimeInput,
+} from "../../lib/schedule";
+
+/** フォームで編集中のスケジュール。時刻は未正規化のTextInput値を保持 */
+type ScheduleDraft = Partial<
+  Record<`${Weekday}`, { pickup: string; dropoff: string }>
+>;
+
+function scheduleToDraft(schedule: Schedule): ScheduleDraft {
+  const draft: ScheduleDraft = {};
+  for (const day of WEEKDAYS) {
+    const entry = schedule[`${day}`];
+    if (entry) {
+      draft[`${day}`] = {
+        pickup: formatTimeForDisplay(entry.pickup),
+        dropoff: formatTimeForDisplay(entry.dropoff),
+      };
+    }
+  }
+  return draft;
+}
 
 export default function UsersScreen() {
   const [users, setUsers] = useState<ServiceUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [lineId, setLineId] = useState("");
+  const [draft, setDraft] = useState<ScheduleDraft>({});
   const [editingUser, setEditingUser] = useState<ServiceUser | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,6 +84,7 @@ export default function UsersScreen() {
   const resetForm = () => {
     setName("");
     setLineId("");
+    setDraft({});
     setEditingUser(null);
   };
 
@@ -62,6 +92,27 @@ export default function UsersScreen() {
     setEditingUser(user);
     setName(user.patient_name);
     setLineId(user.line_user_id);
+    setDraft(scheduleToDraft(user.schedule));
+  };
+
+  const toggleWeekday = (day: Weekday) => {
+    setDraft((prev) => {
+      const key = `${day}` as const;
+      if (prev[key]) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: { pickup: "", dropoff: "" } };
+    });
+  };
+
+  const updateTime = (day: Weekday, field: "pickup" | "dropoff", value: string) => {
+    setDraft((prev) => {
+      const key = `${day}` as const;
+      const entry = prev[key] ?? { pickup: "", dropoff: "" };
+      return { ...prev, [key]: { ...entry, [field]: value } };
+    });
   };
 
   const handleSubmit = async () => {
@@ -69,12 +120,38 @@ export default function UsersScreen() {
       Alert.alert("エラー", "利用者名を入力してください");
       return;
     }
+
+    // draft を正規化して Schedule に変換。不正な時刻はエラー
+    const schedule: Schedule = {};
+    for (const day of WEEKDAYS) {
+      const key = `${day}` as const;
+      const entry = draft[key];
+      if (!entry) continue;
+      let pickup: string | null = null;
+      let dropoff: string | null = null;
+      if (entry.pickup.trim()) {
+        pickup = normalizeTimeInput(entry.pickup);
+        if (pickup === null) {
+          Alert.alert("エラー", `${WEEKDAY_LABELS[day]}曜のお迎え時刻は HH:MM 形式で入力してください`);
+          return;
+        }
+      }
+      if (entry.dropoff.trim()) {
+        dropoff = normalizeTimeInput(entry.dropoff);
+        if (dropoff === null) {
+          Alert.alert("エラー", `${WEEKDAY_LABELS[day]}曜のお送り時刻は HH:MM 形式で入力してください`);
+          return;
+        }
+      }
+      schedule[key] = { pickup, dropoff };
+    }
+
     try {
       setSubmitting(true);
       if (editingUser) {
-        await updateServiceUser(editingUser.id, name.trim(), lineId.trim());
+        await updateServiceUser(editingUser.id, name.trim(), lineId.trim(), { schedule });
       } else {
-        await createServiceUser(name.trim(), lineId.trim());
+        await createServiceUser(name.trim(), lineId.trim(), { schedule });
       }
       resetForm();
       await load(setLoading);
@@ -114,54 +191,105 @@ export default function UsersScreen() {
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-      <Text style={styles.title}>利用者管理</Text>
-      <Text style={styles.countText}>登録利用者 {users.length}名</Text>
+      <FlatList
+        data={users}
+        keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={
+          <View>
+            <Text style={styles.title}>利用者管理</Text>
+            <Text style={styles.countText}>登録利用者 {users.length}名</Text>
 
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="利用者名"
-          value={name}
-          onChangeText={setName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="LINE ID（任意）"
-          value={lineId}
-          onChangeText={setLineId}
-        />
-        <View style={styles.formButtons}>
-          <TouchableOpacity
-            style={[styles.submitButton, submitting && styles.disabledButton]}
-            onPress={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>
-                {editingUser ? "更新" : "追加"}
-              </Text>
-            )}
-          </TouchableOpacity>
-          {editingUser && (
-            <TouchableOpacity style={styles.cancelButton} onPress={resetForm}>
-              <Text style={styles.cancelButtonText}>キャンセル</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+            <View style={styles.form}>
+              <TextInput
+                style={styles.input}
+                placeholder="利用者名"
+                value={name}
+                onChangeText={setName}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="LINE ID（任意）"
+                value={lineId}
+                onChangeText={setLineId}
+              />
 
-      {loading ? (
-        <ActivityIndicator size="large" style={styles.loader} />
-      ) : (
-        <FlatList
-          data={users}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => (
+              <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
+              <View style={styles.weekdayRow}>
+                {WEEKDAYS.map((day) => {
+                  const selected = Boolean(draft[`${day}`]);
+                  return (
+                    <TouchableOpacity
+                      key={day}
+                      style={[styles.weekdayButton, selected && styles.weekdayButtonSelected]}
+                      onPress={() => toggleWeekday(day)}
+                    >
+                      <Text style={[styles.weekdayText, selected && styles.weekdayTextSelected]}>
+                        {WEEKDAY_LABELS[day]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {WEEKDAYS.filter((day) => draft[`${day}`]).map((day) => {
+                const entry = draft[`${day}`]!;
+                return (
+                  <View key={day} style={styles.dayTimeRow}>
+                    <Text style={styles.dayLabel}>{WEEKDAY_LABELS[day]}</Text>
+                    <TextInput
+                      style={[styles.input, styles.timeInput]}
+                      placeholder="お迎え 09:00"
+                      value={entry.pickup}
+                      onChangeText={(v) => updateTime(day, "pickup", v)}
+                      keyboardType="numbers-and-punctuation"
+                      maxLength={5}
+                    />
+                    <TextInput
+                      style={[styles.input, styles.timeInput]}
+                      placeholder="お送り 16:00"
+                      value={entry.dropoff}
+                      onChangeText={(v) => updateTime(day, "dropoff", v)}
+                      keyboardType="numbers-and-punctuation"
+                      maxLength={5}
+                    />
+                  </View>
+                );
+              })}
+
+              <View style={styles.formButtons}>
+                <TouchableOpacity
+                  style={[styles.submitButton, submitting && styles.disabledButton]}
+                  onPress={handleSubmit}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>
+                      {editingUser ? "更新" : "追加"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {editingUser && (
+                  <TouchableOpacity style={styles.cancelButton} onPress={resetForm}>
+                    <Text style={styles.cancelButtonText}>キャンセル</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {loading && <ActivityIndicator size="large" style={styles.loader} />}
+          </View>
+        }
+        renderItem={({ item }) => {
+          const scheduleText = formatSchedule(item);
+          return (
             <View style={styles.userRow}>
               <View style={styles.userInfo}>
                 <Text style={styles.userName}>{item.patient_name}</Text>
+                {scheduleText ? (
+                  <Text style={styles.scheduleText}>{scheduleText}</Text>
+                ) : null}
                 {item.line_user_id ? (
                   <Text style={styles.linkedBadge}>LINE連携済み</Text>
                 ) : (
@@ -186,18 +314,19 @@ export default function UsersScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          )}
-          style={styles.list}
-          ListEmptyComponent={
+          );
+        }}
+        ListEmptyComponent={
+          loading ? null : (
             <Text style={styles.emptyText}>
               利用者が登録されていません。{"\n"}上のフォームから追加してください。
             </Text>
-          }
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-        />
-      )}
+          )
+        }
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -233,9 +362,59 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
+  fieldLabel: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 8,
+    marginBottom: 6,
+    fontWeight: "600",
+  },
+  weekdayRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 8,
+  },
+  weekdayButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    alignItems: "center",
+  },
+  weekdayButtonSelected: {
+    backgroundColor: "#2563eb",
+    borderColor: "#2563eb",
+  },
+  weekdayText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "600",
+  },
+  weekdayTextSelected: {
+    color: "#fff",
+  },
+  dayTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  dayLabel: {
+    width: 28,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    textAlign: "center",
+  },
+  timeInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
   formButtons: {
     flexDirection: "row",
     gap: 8,
+    marginTop: 12,
   },
   submitButton: {
     flex: 1,
@@ -266,9 +445,6 @@ const styles = StyleSheet.create({
   loader: {
     marginTop: 32,
   },
-  list: {
-    flex: 1,
-  },
   userRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -286,16 +462,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
+  scheduleText: {
+    fontSize: 13,
+    color: "#444",
+    marginTop: 4,
+    lineHeight: 18,
+  },
   linkedBadge: {
     fontSize: 13,
     color: "#16a34a",
     fontWeight: "600",
-    marginTop: 2,
+    marginTop: 4,
   },
   inviteCode: {
     fontSize: 13,
     color: "#666",
-    marginTop: 2,
+    marginTop: 4,
     fontFamily: "monospace",
   },
   userActions: {
