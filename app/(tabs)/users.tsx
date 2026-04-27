@@ -23,26 +23,26 @@ import {
   fetchServiceUsers,
   updateServiceUser,
 } from "../../lib/api";
-import { WEEKDAYS, WEEKDAY_LABELS, formatSchedule } from "../../lib/schedule";
+import {
+  WEEKDAYS,
+  WEEKDAY_LABELS,
+  formatSchedule,
+  formatTimeForDisplay,
+} from "../../lib/schedule";
 import { TimePickerField } from "../../components/TimePickerField";
 
-/** フォームで編集中のスケジュール。時刻は "HH:MM" or null */
-type ScheduleDraft = Partial<
-  Record<`${Weekday}`, { pickup: string | null; dropoff: string | null }>
->;
-
-function scheduleToDraft(schedule: Schedule): ScheduleDraft {
-  const draft: ScheduleDraft = {};
+/** API由来の "HH:MM:SS" を "HH:MM" に揃えた Schedule を返す（編集UIでの表示用） */
+function normalizeScheduleForEdit(schedule: Schedule): Schedule {
+  const result: Schedule = {};
   for (const day of WEEKDAYS) {
     const entry = schedule[`${day}`];
-    if (entry) {
-      draft[`${day}`] = {
-        pickup: entry.pickup ? entry.pickup.slice(0, 5) : null,
-        dropoff: entry.dropoff ? entry.dropoff.slice(0, 5) : null,
-      };
-    }
+    if (!entry) continue;
+    result[`${day}`] = {
+      pickup: entry.pickup ? formatTimeForDisplay(entry.pickup) : null,
+      dropoff: entry.dropoff ? formatTimeForDisplay(entry.dropoff) : null,
+    };
   }
-  return draft;
+  return result;
 }
 
 export default function UsersScreen() {
@@ -50,7 +50,7 @@ export default function UsersScreen() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [lineId, setLineId] = useState("");
-  const [draft, setDraft] = useState<ScheduleDraft>({});
+  const [draft, setDraft] = useState<Schedule>({});
   const [editingUser, setEditingUser] = useState<ServiceUser | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -87,7 +87,7 @@ export default function UsersScreen() {
     setEditingUser(user);
     setName(user.patient_name);
     setLineId(user.line_user_id);
-    setDraft(scheduleToDraft(user.schedule));
+    setDraft(normalizeScheduleForEdit(user.schedule));
   };
 
   const toggleWeekday = (day: Weekday) => {
@@ -116,21 +116,12 @@ export default function UsersScreen() {
       return;
     }
 
-    // draft はピッカーで選んだ値なので既に妥当。そのまま Schedule に変換
-    const schedule: Schedule = {};
-    for (const day of WEEKDAYS) {
-      const key = `${day}` as const;
-      const entry = draft[key];
-      if (!entry) continue;
-      schedule[key] = { pickup: entry.pickup, dropoff: entry.dropoff };
-    }
-
     try {
       setSubmitting(true);
       if (editingUser) {
-        await updateServiceUser(editingUser.id, name.trim(), lineId.trim(), { schedule });
+        await updateServiceUser(editingUser.id, name.trim(), lineId.trim(), draft);
       } else {
-        await createServiceUser(name.trim(), lineId.trim(), { schedule });
+        await createServiceUser(name.trim(), lineId.trim(), draft);
       }
       resetForm();
       await load(setLoading);

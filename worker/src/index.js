@@ -78,16 +78,11 @@ function jsonResponse(data, status = 200) {
 function normalizeTime(input) {
   if (input === null || input === undefined || input === '') return null;
   if (typeof input !== 'string') return null;
-  // "HH:MM" or "HH:MM:SS" を許可
   if (!/^\d{2}:\d{2}(:\d{2})?$/.test(input)) return null;
-  return input.slice(0, 5); // "HH:MM" に統一
+  return input.slice(0, 5);
 }
 
-/**
- * クライアントから来た schedule オブジェクトを正規化。
- * 形式: { "1": {pickup: "HH:MM"|null, dropoff: "HH:MM"|null}, ... }
- * 不正な入力は捨てる。返り値は必ず妥当なオブジェクト。
- */
+/** クライアントから来た schedule を正規化。不正な値は捨てる。 */
 function normalizeSchedule(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
   const result = {};

@@ -28,6 +28,42 @@ function range(from: number, to: number, step = 1): number[] {
   return out;
 }
 
+type PickerColumnProps = {
+  label: string;
+  data: number[];
+  selected: number | null;
+  onSelect: (n: number) => void;
+};
+
+function PickerColumn({ label, data, selected, onSelect }: PickerColumnProps) {
+  return (
+    <View style={styles.column}>
+      <Text style={styles.columnLabel}>{label}</Text>
+      <FlatList
+        data={data}
+        keyExtractor={(n) => String(n)}
+        initialNumToRender={20}
+        extraData={selected}
+        renderItem={({ item }) => {
+          const isSelected = selected === item;
+          return (
+            <TouchableOpacity
+              style={[styles.option, isSelected && styles.optionSelected]}
+              onPress={() => onSelect(item)}
+            >
+              <Text
+                style={[styles.optionText, isSelected && styles.optionTextSelected]}
+              >
+                {String(item).padStart(2, "0")}
+              </Text>
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </View>
+  );
+}
+
 export function TimePickerField({
   value,
   onChange,
@@ -92,52 +128,18 @@ export function TimePickerField({
             <Text style={styles.sheetTitle}>時刻を選択</Text>
 
             <View style={styles.columns}>
-              <View style={styles.column}>
-                <Text style={styles.columnLabel}>時</Text>
-                <FlatList
-                  data={hours}
-                  keyExtractor={(n) => `h-${n}`}
-                  initialNumToRender={20}
-                  renderItem={({ item }) => {
-                    const selected = draftHour === item;
-                    return (
-                      <TouchableOpacity
-                        style={[styles.option, selected && styles.optionSelected]}
-                        onPress={() => setDraftHour(item)}
-                      >
-                        <Text
-                          style={[styles.optionText, selected && styles.optionTextSelected]}
-                        >
-                          {String(item).padStart(2, "0")}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  }}
-                />
-              </View>
-              <View style={styles.column}>
-                <Text style={styles.columnLabel}>分</Text>
-                <FlatList
-                  data={minutes}
-                  keyExtractor={(n) => `m-${n}`}
-                  initialNumToRender={20}
-                  renderItem={({ item }) => {
-                    const selected = draftMinute === item;
-                    return (
-                      <TouchableOpacity
-                        style={[styles.option, selected && styles.optionSelected]}
-                        onPress={() => setDraftMinute(item)}
-                      >
-                        <Text
-                          style={[styles.optionText, selected && styles.optionTextSelected]}
-                        >
-                          {String(item).padStart(2, "0")}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  }}
-                />
-              </View>
+              <PickerColumn
+                label="時"
+                data={hours}
+                selected={draftHour}
+                onSelect={setDraftHour}
+              />
+              <PickerColumn
+                label="分"
+                data={minutes}
+                selected={draftMinute}
+                onSelect={setDraftMinute}
+              />
             </View>
 
             <View style={styles.footer}>

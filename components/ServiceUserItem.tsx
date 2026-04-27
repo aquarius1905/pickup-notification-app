@@ -1,3 +1,4 @@
+import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type Props = {
@@ -8,7 +9,7 @@ type Props = {
   subtitle?: string;
 };
 
-export function ServiceUserItem({ name, selected, onSelect, notifiedTypes, subtitle }: Props) {
+function ServiceUserItemBase({ name, selected, onSelect, notifiedTypes, subtitle }: Props) {
   const departed = notifiedTypes?.has("depart");
   const arrived = notifiedTypes?.has("arrive");
 
@@ -28,6 +29,8 @@ export function ServiceUserItem({ name, selected, onSelect, notifiedTypes, subti
     </TouchableOpacity>
   );
 }
+
+export const ServiceUserItem = React.memo(ServiceUserItemBase);
 
 const styles = StyleSheet.create({
   item: {

@@ -27,10 +27,6 @@ export type ServiceUser = {
   schedule: Schedule;
 };
 
-export type ServiceUserInput = {
-  schedule?: Schedule;
-};
-
 type WorkerResponse = {
   ok: boolean;
   error?: string;
@@ -78,11 +74,11 @@ export async function sendPickupNotification(
 export async function createServiceUser(
   patientName: string,
   lineUserId?: string,
-  schedule?: ServiceUserInput,
+  schedule?: Schedule,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "create",
-    { patientName, lineUserId, ...schedule },
+    { patientName, lineUserId, schedule },
     "利用者の追加に失敗しました",
   );
   if (!data.family) throw new Error("利用者の追加に失敗しました");
@@ -93,11 +89,11 @@ export async function updateServiceUser(
   id: string,
   patientName?: string,
   lineUserId?: string,
-  schedule?: ServiceUserInput,
+  schedule?: Schedule,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "update",
-    { id, patientName, lineUserId, ...schedule },
+    { id, patientName, lineUserId, schedule },
     "利用者の更新に失敗しました",
   );
   if (!data.family) throw new Error("利用者の更新に失敗しました");

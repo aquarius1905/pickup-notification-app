@@ -50,9 +50,15 @@ export default function HomeScreen() {
   const today = getCurrentWeekday();
   const todayLabel = WEEKDAY_LABELS[today];
 
-  // 今日フィルタ + お迎え時刻順
   const todayUsers = useMemo(() => filterAndSortByDay(users, today), [users, today]);
-  const visibleUsers = showAll ? users : todayUsers;
+  const visibleUsers = useMemo(
+    () =>
+      (showAll ? users : todayUsers).map((user) => ({
+        user,
+        subtitle: formatDayTime(getDaySchedule(user, today)),
+      })),
+    [showAll, users, todayUsers, today],
+  );
 
   if (fetching) {
     return (
@@ -82,19 +88,16 @@ export default function HomeScreen() {
 
       <FlatList
         data={visibleUsers}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => {
-          const subtitle = formatDayTime(getDaySchedule(item, today));
-          return (
-            <ServiceUserItem
-              name={item.patient_name}
-              selected={selectedUser === item.patient_name}
-              onSelect={setSelectedUser}
-              notifiedTypes={notified[item.patient_name]}
-              subtitle={subtitle}
-            />
-          );
-        }}
+        keyExtractor={({ user }) => String(user.id)}
+        renderItem={({ item: { user, subtitle } }) => (
+          <ServiceUserItem
+            name={user.patient_name}
+            selected={selectedUser === user.patient_name}
+            onSelect={setSelectedUser}
+            notifiedTypes={notified[user.patient_name]}
+            subtitle={subtitle}
+          />
+        )}
         style={styles.list}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
