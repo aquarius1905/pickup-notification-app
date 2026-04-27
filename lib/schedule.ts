@@ -41,6 +41,49 @@ export function getScheduledWeekdays(schedule: Schedule): Weekday[] {
   return result;
 }
 
+/** 現在の曜日番号を返す（0=日〜6=土） */
+export function getCurrentWeekday(): Weekday {
+  return new Date().getDay() as Weekday;
+}
+
+/** 指定された曜日のスケジュールを返す。未登録なら null */
+export function getDaySchedule(
+  user: ServiceUser,
+  day: Weekday,
+): DaySchedule | null {
+  return user.schedule[`${day}`] ?? null;
+}
+
+/** 指定曜日に通所する利用者のみ抽出し、お迎え時刻の昇順で並び替えて返す。
+ *  時刻未設定の利用者は末尾に来る。 */
+export function filterAndSortByDay(
+  users: ServiceUser[],
+  day: Weekday,
+): ServiceUser[] {
+  return users
+    .filter((u) => getDaySchedule(u, day) !== null)
+    .sort((a, b) => {
+      const ap = getDaySchedule(a, day)?.pickup ?? "";
+      const bp = getDaySchedule(b, day)?.pickup ?? "";
+      // 空文字（未設定）は末尾に
+      if (!ap && !bp) return 0;
+      if (!ap) return 1;
+      if (!bp) return -1;
+      return ap.localeCompare(bp);
+    });
+}
+
+/** 「お迎え 09:00 / お送り 16:00」形式で1日分の時刻を表示用に整形 */
+export function formatDayTime(entry: DaySchedule | null): string {
+  if (!entry) return "";
+  const pickup = formatTimeForDisplay(entry.pickup);
+  const dropoff = formatTimeForDisplay(entry.dropoff);
+  if (pickup && dropoff) return `お迎え ${pickup} / お送り ${dropoff}`;
+  if (pickup) return `お迎え ${pickup}`;
+  if (dropoff) return `お送り ${dropoff}`;
+  return "";
+}
+
 /** 利用者のスケジュール概要を複数行文字列で返す。例: "月 09:00〜16:00\n水 09:30〜17:00" */
 export function formatSchedule(user: ServiceUser): string {
   const days = getScheduledWeekdays(user.schedule);

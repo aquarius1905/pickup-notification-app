@@ -23,17 +23,12 @@ import {
   fetchServiceUsers,
   updateServiceUser,
 } from "../../lib/api";
-import {
-  WEEKDAYS,
-  WEEKDAY_LABELS,
-  formatSchedule,
-  formatTimeForDisplay,
-  normalizeTimeInput,
-} from "../../lib/schedule";
+import { WEEKDAYS, WEEKDAY_LABELS, formatSchedule } from "../../lib/schedule";
+import { TimePickerField } from "../../components/TimePickerField";
 
-/** フォームで編集中のスケジュール。時刻は未正規化のTextInput値を保持 */
+/** フォームで編集中のスケジュール。時刻は "HH:MM" or null */
 type ScheduleDraft = Partial<
-  Record<`${Weekday}`, { pickup: string; dropoff: string }>
+  Record<`${Weekday}`, { pickup: string | null; dropoff: string | null }>
 >;
 
 function scheduleToDraft(schedule: Schedule): ScheduleDraft {
@@ -42,8 +37,8 @@ function scheduleToDraft(schedule: Schedule): ScheduleDraft {
     const entry = schedule[`${day}`];
     if (entry) {
       draft[`${day}`] = {
-        pickup: formatTimeForDisplay(entry.pickup),
-        dropoff: formatTimeForDisplay(entry.dropoff),
+        pickup: entry.pickup ? entry.pickup.slice(0, 5) : null,
+        dropoff: entry.dropoff ? entry.dropoff.slice(0, 5) : null,
       };
     }
   }
@@ -103,14 +98,14 @@ export default function UsersScreen() {
         delete next[key];
         return next;
       }
-      return { ...prev, [key]: { pickup: "", dropoff: "" } };
+      return { ...prev, [key]: { pickup: null, dropoff: null } };
     });
   };
 
-  const updateTime = (day: Weekday, field: "pickup" | "dropoff", value: string) => {
+  const updateTime = (day: Weekday, field: "pickup" | "dropoff", value: string | null) => {
     setDraft((prev) => {
       const key = `${day}` as const;
-      const entry = prev[key] ?? { pickup: "", dropoff: "" };
+      const entry = prev[key] ?? { pickup: null, dropoff: null };
       return { ...prev, [key]: { ...entry, [field]: value } };
     });
   };
@@ -121,29 +116,13 @@ export default function UsersScreen() {
       return;
     }
 
-    // draft を正規化して Schedule に変換。不正な時刻はエラー
+    // draft はピッカーで選んだ値なので既に妥当。そのまま Schedule に変換
     const schedule: Schedule = {};
     for (const day of WEEKDAYS) {
       const key = `${day}` as const;
       const entry = draft[key];
       if (!entry) continue;
-      let pickup: string | null = null;
-      let dropoff: string | null = null;
-      if (entry.pickup.trim()) {
-        pickup = normalizeTimeInput(entry.pickup);
-        if (pickup === null) {
-          Alert.alert("エラー", `${WEEKDAY_LABELS[day]}曜のお迎え時刻は HH:MM 形式で入力してください`);
-          return;
-        }
-      }
-      if (entry.dropoff.trim()) {
-        dropoff = normalizeTimeInput(entry.dropoff);
-        if (dropoff === null) {
-          Alert.alert("エラー", `${WEEKDAY_LABELS[day]}曜のお送り時刻は HH:MM 形式で入力してください`);
-          return;
-        }
-      }
-      schedule[key] = { pickup, dropoff };
+      schedule[key] = { pickup: entry.pickup, dropoff: entry.dropoff };
     }
 
     try {
@@ -236,22 +215,20 @@ export default function UsersScreen() {
                 return (
                   <View key={day} style={styles.dayTimeRow}>
                     <Text style={styles.dayLabel}>{WEEKDAY_LABELS[day]}</Text>
-                    <TextInput
-                      style={[styles.input, styles.timeInput]}
-                      placeholder="お迎え 09:00"
-                      value={entry.pickup}
-                      onChangeText={(v) => updateTime(day, "pickup", v)}
-                      keyboardType="numbers-and-punctuation"
-                      maxLength={5}
-                    />
-                    <TextInput
-                      style={[styles.input, styles.timeInput]}
-                      placeholder="お送り 16:00"
-                      value={entry.dropoff}
-                      onChangeText={(v) => updateTime(day, "dropoff", v)}
-                      keyboardType="numbers-and-punctuation"
-                      maxLength={5}
-                    />
+                    <View style={styles.timeField}>
+                      <TimePickerField
+                        value={entry.pickup}
+                        onChange={(v) => updateTime(day, "pickup", v)}
+                        placeholder="お迎え"
+                      />
+                    </View>
+                    <View style={styles.timeField}>
+                      <TimePickerField
+                        value={entry.dropoff}
+                        onChange={(v) => updateTime(day, "dropoff", v)}
+                        placeholder="お送り"
+                      />
+                    </View>
                   </View>
                 );
               })}
@@ -407,9 +384,8 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "center",
   },
-  timeInput: {
+  timeField: {
     flex: 1,
-    marginBottom: 0,
   },
   formButtons: {
     flexDirection: "row",

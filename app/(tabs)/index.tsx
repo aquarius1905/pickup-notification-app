@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -11,6 +11,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ServiceUserItem } from "../../components/ServiceUserItem";
 import { useServiceUsers } from "../../hooks/useServiceUsers";
+import {
+  WEEKDAY_LABELS,
+  filterAndSortByDay,
+  formatDayTime,
+  getCurrentWeekday,
+  getDaySchedule,
+} from "../../lib/schedule";
 
 type NotifyButtonProps = {
   label: string;
@@ -38,6 +45,14 @@ function NotifyButton({ label, buttonStyle, onPress, disabled }: NotifyButtonPro
 export default function HomeScreen() {
   const { users, selectedUser, setSelectedUser, fetching, refreshing, refresh, sending, notify, notified } =
     useServiceUsers();
+  const [showAll, setShowAll] = useState(false);
+
+  const today = getCurrentWeekday();
+  const todayLabel = WEEKDAY_LABELS[today];
+
+  // 今日フィルタ + お迎え時刻順
+  const todayUsers = useMemo(() => filterAndSortByDay(users, today), [users, today]);
+  const visibleUsers = showAll ? users : todayUsers;
 
   if (fetching) {
     return (
@@ -54,22 +69,38 @@ export default function HomeScreen() {
         {new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
       </Text>
 
-      <Text style={styles.sectionTitle}>利用者を選択（{users.length}名）</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>
+          {showAll
+            ? `全員（${users.length}名）`
+            : `本日（${todayLabel}）の利用者（${todayUsers.length}名）`}
+        </Text>
+        <TouchableOpacity onPress={() => setShowAll((v) => !v)}>
+          <Text style={styles.toggleText}>{showAll ? "本日のみ" : "全員表示"}</Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
-        data={users}
+        data={visibleUsers}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => (
-          <ServiceUserItem
-            name={item.patient_name}
-            selected={selectedUser === item.patient_name}
-            onSelect={setSelectedUser}
-            notifiedTypes={notified[item.patient_name]}
-          />
-        )}
+        renderItem={({ item }) => {
+          const subtitle = formatDayTime(getDaySchedule(item, today));
+          return (
+            <ServiceUserItem
+              name={item.patient_name}
+              selected={selectedUser === item.patient_name}
+              onSelect={setSelectedUser}
+              notifiedTypes={notified[item.patient_name]}
+              subtitle={subtitle}
+            />
+          );
+        }}
         style={styles.list}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
-            利用者が登録されていません。{"\n"}「利用者管理」タブから追加してください。
+            {showAll
+              ? `利用者が登録されていません。${"\n"}「利用者管理」タブから追加してください。`
+              : `本日（${todayLabel}）通所予定の利用者はいません。${"\n"}「全員表示」で確認できます。`}
           </Text>
         }
         refreshControl={
@@ -117,11 +148,21 @@ const styles = StyleSheet.create({
     color: "#666",
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 12,
     color: "#666",
+  },
+  toggleText: {
+    fontSize: 14,
+    color: "#2563eb",
+    fontWeight: "600",
   },
   list: {
     flex: 1,

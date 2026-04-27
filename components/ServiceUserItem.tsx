@@ -5,9 +5,10 @@ type Props = {
   selected: boolean;
   onSelect: (name: string) => void;
   notifiedTypes?: Set<"depart" | "arrive">;
+  subtitle?: string;
 };
 
-export function ServiceUserItem({ name, selected, onSelect, notifiedTypes }: Props) {
+export function ServiceUserItem({ name, selected, onSelect, notifiedTypes, subtitle }: Props) {
   const departed = notifiedTypes?.has("depart");
   const arrived = notifiedTypes?.has("arrive");
 
@@ -17,6 +18,7 @@ export function ServiceUserItem({ name, selected, onSelect, notifiedTypes }: Pro
       onPress={() => onSelect(name)}
     >
       <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
+      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       {(departed || arrived) && (
         <View style={styles.badgeRow}>
           {departed && <Text style={styles.departBadge}>出発通知済み</Text>}
@@ -45,6 +47,11 @@ const styles = StyleSheet.create({
   },
   selectedName: {
     color: "#2563eb",
+  },
+  subtitle: {
+    fontSize: 13,
+    color: "#444",
+    marginTop: 4,
   },
   badgeRow: {
     flexDirection: "row",
