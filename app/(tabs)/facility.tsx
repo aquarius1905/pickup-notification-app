@@ -13,9 +13,7 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { type Facility, fetchFacility, updateFacilityName } from "../../lib/api";
-
-const API_KEY = process.env.EXPO_PUBLIC_API_KEY ?? "";
+import { API_KEY, type Facility, fetchFacility, updateFacilityName } from "../../lib/api";
 
 export default function FacilityScreen() {
   const [facility, setFacility] = useState<Facility | null>(null);
@@ -41,18 +39,19 @@ export default function FacilityScreen() {
   }, [load]);
 
   const handleSave = async () => {
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       Alert.alert("エラー", "施設名を入力してください");
       return;
     }
-    if (name.trim() === facility?.name) {
+    if (trimmedName === facility?.name) {
       Alert.alert("変更なし", "施設名は変更されていません");
       return;
     }
 
     try {
       setSubmitting(true);
-      const updated = await updateFacilityName(name.trim());
+      const updated = await updateFacilityName(trimmedName);
       setFacility(updated);
       Alert.alert("保存しました", `施設名を「${updated.name}」に更新しました`);
     } catch (error) {

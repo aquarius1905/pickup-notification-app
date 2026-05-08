@@ -34,40 +34,13 @@ export default {
 
       const facilityId = facility.id;
 
-      // 利用者一覧取得
-      if (action === 'list') {
-        return handleList(facilityId, env, supabaseHeaders);
-      }
-
-      // 通知送信
-      if (action === 'notify') {
-        return handleNotify(body, facilityId, env, supabaseHeaders);
-      }
-
-      // 利用者追加
-      if (action === 'create') {
-        return handleCreate(body, facilityId, env, supabaseHeaders);
-      }
-
-      // 利用者更新
-      if (action === 'update') {
-        return handleUpdate(body, facilityId, env, supabaseHeaders);
-      }
-
-      // 利用者削除（論理削除）
-      if (action === 'delete') {
-        return handleDelete(body, facilityId, env, supabaseHeaders);
-      }
-
-      // 施設情報取得
-      if (action === 'getFacility') {
-        return jsonResponse({ ok: true, facility: { id: facility.id, name: facility.name } });
-      }
-
-      // 施設名更新
-      if (action === 'updateFacility') {
-        return handleUpdateFacility(body, facilityId, env, supabaseHeaders);
-      }
+      if (action === 'list') return handleList(facilityId, env, supabaseHeaders);
+      if (action === 'notify') return handleNotify(body, facilityId, env, supabaseHeaders);
+      if (action === 'create') return handleCreate(body, facilityId, env, supabaseHeaders);
+      if (action === 'update') return handleUpdate(body, facilityId, env, supabaseHeaders);
+      if (action === 'delete') return handleDelete(body, facilityId, env, supabaseHeaders);
+      if (action === 'getFacility') return handleGetFacility(facility);
+      if (action === 'updateFacility') return handleUpdateFacility(body, facilityId, env, supabaseHeaders);
 
       return jsonResponse({ ok: false, error: 'invalid action' }, 400);
     } catch (error) {
@@ -129,6 +102,22 @@ async function authenticateFacility(apiKey, env, headers) {
 }
 
 // --- アクションハンドラ ---
+
+function handleGetFacility(facility) {
+  return jsonResponse({ ok: true, facility: { id: facility.id, name: facility.name } });
+}
+
+async function checkSupabaseResult(res, notFoundError) {
+  if (!res.ok) {
+    const error = await res.text();
+    return { err: jsonResponse({ ok: false, error }, res.status) };
+  }
+  const rows = await res.json();
+  if (rows.length === 0) {
+    return { err: jsonResponse({ ok: false, error: notFoundError }, 404) };
+  }
+  return { rows };
+}
 
 async function handleList(facilityId, env, headers) {
   const res = await fetch(
@@ -254,17 +243,9 @@ async function handleUpdate(body, facilityId, env, headers) {
     }
   );
 
-  if (!res.ok) {
-    const error = await res.text();
-    return jsonResponse({ ok: false, error }, res.status);
-  }
-
-  const updated = await res.json();
-  if (updated.length === 0) {
-    return jsonResponse({ ok: false, error: '利用者が見つかりません' }, 404);
-  }
-
-  return jsonResponse({ ok: true, family: updated[0] });
+  const { err, rows } = await checkSupabaseResult(res, '利用者が見つかりません');
+  if (err) return err;
+  return jsonResponse({ ok: true, family: rows[0] });
 }
 
 async function handleDelete(body, facilityId, env, headers) {
@@ -274,7 +255,6 @@ async function handleDelete(body, facilityId, env, headers) {
     return jsonResponse({ ok: false, error: 'idは必須です' }, 400);
   }
 
-  // 論理削除（is_active を false に）
   const res = await fetch(
     `${env.SUPABASE_URL}/rest/v1/families?id=eq.${id}&facility_id=eq.${facilityId}`,
     {
@@ -284,16 +264,8 @@ async function handleDelete(body, facilityId, env, headers) {
     }
   );
 
-  if (!res.ok) {
-    const error = await res.text();
-    return jsonResponse({ ok: false, error }, res.status);
-  }
-
-  const deleted = await res.json();
-  if (deleted.length === 0) {
-    return jsonResponse({ ok: false, error: '利用者が見つかりません' }, 404);
-  }
-
+  const { err } = await checkSupabaseResult(res, '利用者が見つかりません');
+  if (err) return err;
   return jsonResponse({ ok: true });
 }
 
@@ -305,7 +277,7 @@ async function handleUpdateFacility(body, facilityId, env, headers) {
   }
 
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/facilities?id=eq.${facilityId}`,
+    `${env.SUPABASE_URL}/rest/v1/facilities?id=eq.${facilityId}&is_active=eq.true`,
     {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=representation' },
@@ -313,17 +285,9 @@ async function handleUpdateFacility(body, facilityId, env, headers) {
     }
   );
 
-  if (!res.ok) {
-    const error = await res.text();
-    return jsonResponse({ ok: false, error }, res.status);
-  }
-
-  const updated = await res.json();
-  if (updated.length === 0) {
-    return jsonResponse({ ok: false, error: '施設が見つかりません' }, 404);
-  }
-
-  return jsonResponse({ ok: true, facility: { id: updated[0].id, name: updated[0].name } });
+  const { err, rows } = await checkSupabaseResult(res, '施設が見つかりません');
+  if (err) return err;
+  return jsonResponse({ ok: true, facility: { id: rows[0].id, name: rows[0].name } });
 }
 
 // --- LINE Webhook ---
