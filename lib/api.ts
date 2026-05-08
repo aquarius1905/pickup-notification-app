@@ -27,11 +27,17 @@ export type ServiceUser = {
   schedule: Schedule;
 };
 
+export type Facility = {
+  id: string;
+  name: string;
+};
+
 type WorkerResponse = {
   ok: boolean;
   error?: string;
   families?: ServiceUser[];
   family?: ServiceUser;
+  facility?: Facility;
 };
 
 /**
@@ -102,4 +108,16 @@ export async function updateServiceUser(
 
 export async function deleteServiceUser(id: string): Promise<void> {
   await callWorker("delete", { id }, "利用者の削除に失敗しました");
+}
+
+export async function fetchFacility(): Promise<Facility> {
+  const data = await callWorker("getFacility", {}, "施設情報の取得に失敗しました");
+  if (!data.facility) throw new Error("施設情報の取得に失敗しました");
+  return data.facility;
+}
+
+export async function updateFacilityName(name: string): Promise<Facility> {
+  const data = await callWorker("updateFacility", { name }, "施設名の更新に失敗しました");
+  if (!data.facility) throw new Error("施設名の更新に失敗しました");
+  return data.facility;
 }

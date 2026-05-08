@@ -27,6 +27,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="facility"
+        options={{
+          title: "施設設定",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="business-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

@@ -59,6 +59,16 @@ export default {
         return handleDelete(body, facilityId, env, supabaseHeaders);
       }
 
+      // 施設情報取得
+      if (action === 'getFacility') {
+        return jsonResponse({ ok: true, facility: { id: facility.id, name: facility.name } });
+      }
+
+      // 施設名更新
+      if (action === 'updateFacility') {
+        return handleUpdateFacility(body, facilityId, env, supabaseHeaders);
+      }
+
       return jsonResponse({ ok: false, error: 'invalid action' }, 400);
     } catch (error) {
       return jsonResponse({ ok: false, error: String(error) }, 500);
@@ -285,6 +295,35 @@ async function handleDelete(body, facilityId, env, headers) {
   }
 
   return jsonResponse({ ok: true });
+}
+
+async function handleUpdateFacility(body, facilityId, env, headers) {
+  const { name } = body;
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return jsonResponse({ ok: false, error: '施設名は必須です' }, 400);
+  }
+
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/facilities?id=eq.${facilityId}`,
+    {
+      method: 'PATCH',
+      headers: { ...headers, Prefer: 'return=representation' },
+      body: JSON.stringify({ name: name.trim() }),
+    }
+  );
+
+  if (!res.ok) {
+    const error = await res.text();
+    return jsonResponse({ ok: false, error }, res.status);
+  }
+
+  const updated = await res.json();
+  if (updated.length === 0) {
+    return jsonResponse({ ok: false, error: '施設が見つかりません' }, 404);
+  }
+
+  return jsonResponse({ ok: true, facility: { id: updated[0].id, name: updated[0].name } });
 }
 
 // --- LINE Webhook ---
