@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ServiceUserItem } from "../../components/ServiceUserItem";
@@ -21,12 +22,17 @@ import {
 
 type NotifyButtonProps = {
   label: string;
-  buttonStyle: object;
+  buttonStyle: ViewStyle;
   onPress: () => void;
   disabled: boolean;
 };
 
-function NotifyButton({ label, buttonStyle, onPress, disabled }: NotifyButtonProps) {
+function NotifyButton({
+  label,
+  buttonStyle,
+  onPress,
+  disabled,
+}: NotifyButtonProps) {
   return (
     <TouchableOpacity
       style={[styles.button, buttonStyle, disabled && styles.disabledButton]}
@@ -43,14 +49,26 @@ function NotifyButton({ label, buttonStyle, onPress, disabled }: NotifyButtonPro
 }
 
 export default function HomeScreen() {
-  const { users, selectedUser, setSelectedUser, fetching, refreshing, refresh, sending, notify, notified } =
-    useServiceUsers();
+  const {
+    users,
+    selectedUser,
+    setSelectedUser,
+    fetching,
+    refreshing,
+    refresh,
+    sending,
+    notify,
+    notified,
+  } = useServiceUsers();
   const [showAll, setShowAll] = useState(false);
 
   const today = getCurrentWeekday();
   const todayLabel = WEEKDAY_LABELS[today];
 
-  const todayUsers = useMemo(() => filterAndSortByDay(users, today), [users, today]);
+  const todayUsers = useMemo(
+    () => filterAndSortByDay(users, today),
+    [users, today],
+  );
   const visibleUsers = useMemo(
     () =>
       (showAll ? users : todayUsers).map((user) => ({
@@ -72,7 +90,12 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>送迎通知</Text>
       <Text style={styles.dateText}>
-        {new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" })}
+        {new Date().toLocaleDateString("ja-JP", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          weekday: "short",
+        })}
       </Text>
 
       <View style={styles.sectionHeader}>
@@ -82,7 +105,9 @@ export default function HomeScreen() {
             : `本日（${todayLabel}）の利用者（${todayUsers.length}名）`}
         </Text>
         <TouchableOpacity onPress={() => setShowAll((v) => !v)}>
-          <Text style={styles.toggleText}>{showAll ? "本日のみ" : "全員表示"}</Text>
+          <Text style={styles.toggleText}>
+            {showAll ? "本日のみ" : "全員表示"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -128,9 +153,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {sending && (
-        <Text style={styles.sendingText}>通知を送信中...</Text>
-      )}
+      {sending && <Text style={styles.sendingText}>通知を送信中...</Text>}
     </SafeAreaView>
   );
 }

@@ -1,3 +1,4 @@
+import * as Clipboard from "expo-clipboard";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,8 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { TimePickerField } from "../../components/TimePickerField";
 import {
   type Schedule,
   type ServiceUser,
@@ -29,9 +30,7 @@ import {
   formatSchedule,
   formatTimeForDisplay,
 } from "../../lib/schedule";
-import { TimePickerField } from "../../components/TimePickerField";
 
-/** API由来の "HH:MM:SS" を "HH:MM" に揃えた Schedule を返す（編集UIでの表示用） */
 function normalizeScheduleForEdit(schedule: Schedule): Schedule {
   const result: Schedule = {};
   for (const day of WEEKDAYS) {
@@ -55,20 +54,17 @@ export default function UsersScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(
-    async (setLoadingFlag: (v: boolean) => void) => {
-      try {
-        setLoadingFlag(true);
-        const data = await fetchServiceUsers();
-        setUsers(data);
-      } catch {
-        Alert.alert("エラー", "利用者一覧の取得に失敗しました");
-      } finally {
-        setLoadingFlag(false);
-      }
-    },
-    [],
-  );
+  const load = useCallback(async (setLoadingFlag: (v: boolean) => void) => {
+    try {
+      setLoadingFlag(true);
+      const data = await fetchServiceUsers();
+      setUsers(data);
+    } catch {
+      Alert.alert("エラー", "利用者一覧の取得に失敗しました");
+    } finally {
+      setLoadingFlag(false);
+    }
+  }, []);
 
   useEffect(() => {
     load(setLoading);
@@ -102,7 +98,11 @@ export default function UsersScreen() {
     });
   };
 
-  const updateTime = (day: Weekday, field: "pickup" | "dropoff", value: string | null) => {
+  const updateTime = (
+    day: Weekday,
+    field: "pickup" | "dropoff",
+    value: string | null,
+  ) => {
     setDraft((prev) => {
       const key = `${day}` as const;
       const entry = prev[key] ?? { pickup: null, dropoff: null };
@@ -119,40 +119,47 @@ export default function UsersScreen() {
     try {
       setSubmitting(true);
       if (editingUser) {
-        await updateServiceUser(editingUser.id, name.trim(), lineId.trim(), draft);
+        await updateServiceUser(
+          editingUser.id,
+          name.trim(),
+          lineId.trim(),
+          draft,
+        );
       } else {
         await createServiceUser(name.trim(), lineId.trim(), draft);
       }
       resetForm();
       await load(setLoading);
     } catch (error) {
-      Alert.alert("エラー", error instanceof Error ? error.message : "保存に失敗しました");
+      Alert.alert(
+        "エラー",
+        error instanceof Error ? error.message : "保存に失敗しました",
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = (user: ServiceUser) => {
-    Alert.alert(
-      "削除確認",
-      `${user.patient_name}さんを削除しますか？`,
-      [
-        { text: "キャンセル", style: "cancel" },
-        {
-          text: "削除",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteServiceUser(user.id);
-              if (editingUser?.id === user.id) resetForm();
-              await load(setLoading);
-            } catch (error) {
-              Alert.alert("エラー", error instanceof Error ? error.message : "削除に失敗しました");
-            }
-          },
+    Alert.alert("削除確認", `${user.patient_name}さんを削除しますか？`, [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: "削除",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteServiceUser(user.id);
+            if (editingUser?.id === user.id) resetForm();
+            await load(setLoading);
+          } catch (error) {
+            Alert.alert(
+              "エラー",
+              error instanceof Error ? error.message : "削除に失敗しました",
+            );
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -161,140 +168,160 @@ export default function UsersScreen() {
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-      <FlatList
-        data={users}
-        keyExtractor={(item) => String(item.id)}
-        ListHeaderComponent={
-          <View>
-            <Text style={styles.title}>利用者管理</Text>
-            <Text style={styles.countText}>登録利用者 {users.length}名</Text>
+        <FlatList
+          data={users}
+          keyExtractor={(item) => String(item.id)}
+          ListHeaderComponent={
+            <View>
+              <Text style={styles.title}>利用者管理</Text>
+              <Text style={styles.countText}>登録利用者 {users.length}名</Text>
 
-            <View style={styles.form}>
-              <TextInput
-                style={styles.input}
-                placeholder="利用者名"
-                value={name}
-                onChangeText={setName}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="LINE ID（任意）"
-                value={lineId}
-                onChangeText={setLineId}
-              />
+              <View style={styles.form}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="利用者名"
+                  value={name}
+                  onChangeText={setName}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="LINE ID（任意）"
+                  value={lineId}
+                  onChangeText={setLineId}
+                />
 
-              <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
-              <View style={styles.weekdayRow}>
-                {WEEKDAYS.map((day) => {
-                  const selected = Boolean(draft[`${day}`]);
+                <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
+                <View style={styles.weekdayRow}>
+                  {WEEKDAYS.map((day) => {
+                    const selected = Boolean(draft[`${day}`]);
+                    return (
+                      <TouchableOpacity
+                        key={day}
+                        style={[
+                          styles.weekdayButton,
+                          selected && styles.weekdayButtonSelected,
+                        ]}
+                        onPress={() => toggleWeekday(day)}
+                      >
+                        <Text
+                          style={[
+                            styles.weekdayText,
+                            selected && styles.weekdayTextSelected,
+                          ]}
+                        >
+                          {WEEKDAY_LABELS[day]}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {WEEKDAYS.filter((day) => draft[`${day}`]).map((day) => {
+                  const entry = draft[`${day}`]!;
                   return (
-                    <TouchableOpacity
-                      key={day}
-                      style={[styles.weekdayButton, selected && styles.weekdayButtonSelected]}
-                      onPress={() => toggleWeekday(day)}
-                    >
-                      <Text style={[styles.weekdayText, selected && styles.weekdayTextSelected]}>
-                        {WEEKDAY_LABELS[day]}
-                      </Text>
-                    </TouchableOpacity>
+                    <View key={day} style={styles.dayTimeRow}>
+                      <Text style={styles.dayLabel}>{WEEKDAY_LABELS[day]}</Text>
+                      <View style={styles.timeField}>
+                        <TimePickerField
+                          value={entry.pickup}
+                          onChange={(v) => updateTime(day, "pickup", v)}
+                          placeholder="お迎え"
+                        />
+                      </View>
+                      <View style={styles.timeField}>
+                        <TimePickerField
+                          value={entry.dropoff}
+                          onChange={(v) => updateTime(day, "dropoff", v)}
+                          placeholder="お送り"
+                        />
+                      </View>
+                    </View>
                   );
                 })}
-              </View>
 
-              {WEEKDAYS.filter((day) => draft[`${day}`]).map((day) => {
-                const entry = draft[`${day}`]!;
-                return (
-                  <View key={day} style={styles.dayTimeRow}>
-                    <Text style={styles.dayLabel}>{WEEKDAY_LABELS[day]}</Text>
-                    <View style={styles.timeField}>
-                      <TimePickerField
-                        value={entry.pickup}
-                        onChange={(v) => updateTime(day, "pickup", v)}
-                        placeholder="お迎え"
-                      />
-                    </View>
-                    <View style={styles.timeField}>
-                      <TimePickerField
-                        value={entry.dropoff}
-                        onChange={(v) => updateTime(day, "dropoff", v)}
-                        placeholder="お送り"
-                      />
-                    </View>
-                  </View>
-                );
-              })}
-
-              <View style={styles.formButtons}>
-                <TouchableOpacity
-                  style={[styles.submitButton, submitting && styles.disabledButton]}
-                  onPress={handleSubmit}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>
-                      {editingUser ? "更新" : "追加"}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-                {editingUser && (
-                  <TouchableOpacity style={styles.cancelButton} onPress={resetForm}>
-                    <Text style={styles.cancelButtonText}>キャンセル</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            {loading && <ActivityIndicator size="large" style={styles.loader} />}
-          </View>
-        }
-        renderItem={({ item }) => {
-          const scheduleText = formatSchedule(item);
-          return (
-            <View style={styles.userRow}>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>{item.patient_name}</Text>
-                {scheduleText ? (
-                  <Text style={styles.scheduleText}>{scheduleText}</Text>
-                ) : null}
-                {item.line_user_id ? (
-                  <Text style={styles.linkedBadge}>LINE連携済み</Text>
-                ) : (
+                <View style={styles.formButtons}>
                   <TouchableOpacity
-                    onPress={async () => {
-                      await Clipboard.setStringAsync(item.invite_code);
-                      Alert.alert("コピーしました", `招待コード: ${item.invite_code}`);
-                    }}
+                    style={[
+                      styles.submitButton,
+                      submitting && styles.disabledButton,
+                    ]}
+                    onPress={handleSubmit}
+                    disabled={submitting}
                   >
-                    <Text style={styles.inviteCode}>
-                      招待コード: {item.invite_code}（タップでコピー）
-                    </Text>
+                    {submitting ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.submitButtonText}>
+                        {editingUser ? "更新" : "追加"}
+                      </Text>
+                    )}
                   </TouchableOpacity>
-                )}
+                  {editingUser && (
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={resetForm}
+                    >
+                      <Text style={styles.cancelButtonText}>キャンセル</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-              <View style={styles.userActions}>
-                <TouchableOpacity onPress={() => startEdit(item)}>
-                  <Text style={styles.editText}>編集</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(item)}>
-                  <Text style={styles.deleteText}>削除</Text>
-                </TouchableOpacity>
-              </View>
+
+              {loading && (
+                <ActivityIndicator size="large" style={styles.loader} />
+              )}
             </View>
-          );
-        }}
-        ListEmptyComponent={
-          loading ? null : (
-            <Text style={styles.emptyText}>
-              利用者が登録されていません。{"\n"}上のフォームから追加してください。
-            </Text>
-          )
-        }
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      />
+          }
+          renderItem={({ item }) => {
+            const scheduleText = formatSchedule(item);
+            return (
+              <View style={styles.userRow}>
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>{item.patient_name}</Text>
+                  {scheduleText ? (
+                    <Text style={styles.scheduleText}>{scheduleText}</Text>
+                  ) : null}
+                  {item.line_user_id ? (
+                    <Text style={styles.linkedBadge}>LINE連携済み</Text>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await Clipboard.setStringAsync(item.invite_code);
+                        Alert.alert(
+                          "コピーしました",
+                          `招待コード: ${item.invite_code}`,
+                        );
+                      }}
+                    >
+                      <Text style={styles.inviteCode}>
+                        招待コード: {item.invite_code}（タップでコピー）
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.userActions}>
+                  <TouchableOpacity onPress={() => startEdit(item)}>
+                    <Text style={styles.editText}>編集</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(item)}>
+                    <Text style={styles.deleteText}>削除</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }}
+          ListEmptyComponent={
+            loading ? null : (
+              <Text style={styles.emptyText}>
+                利用者が登録されていません。{"\n"}
+                上のフォームから追加してください。
+              </Text>
+            )
+          }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
