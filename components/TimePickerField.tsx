@@ -14,11 +14,8 @@ type Props = {
   value: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
-  /** 開始時刻（時単位、デフォルト 5） */
   minHour?: number;
-  /** 終了時刻（時単位、デフォルト 22。この時間まで含む） */
   maxHour?: number;
-  /** 分の刻み（デフォルト 5） */
   step?: number;
 };
 
