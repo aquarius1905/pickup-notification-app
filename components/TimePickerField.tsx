@@ -11,7 +11,7 @@ import {
 import { formatTimeForDisplay } from "../lib/schedule";
 
 type Props = {
-  value: string | null; // "HH:MM" or null
+  value: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
   /** 開始時刻（時単位、デフォルト 5） */
@@ -78,7 +78,6 @@ export function TimePickerField({
   const hours = useMemo(() => range(minHour, maxHour), [minHour, maxHour]);
   const minutes = useMemo(() => range(0, 59, step), [step]);
 
-  // モーダル内で編集中の時・分。開いた時に現在値で初期化
   const [draftHour, setDraftHour] = useState<number | null>(null);
   const [draftMinute, setDraftMinute] = useState<number | null>(null);
 
@@ -166,8 +165,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    padding: 12,
     backgroundColor: "#fff",
   },
   valueText: {

@@ -9,7 +9,13 @@ type Props = {
   subtitle?: string;
 };
 
-function ServiceUserItemBase({ name, selected, onSelect, notifiedTypes, subtitle }: Props) {
+function ServiceUserItemBase({
+  name,
+  selected,
+  onSelect,
+  notifiedTypes,
+  subtitle,
+}: Props) {
   const departed = notifiedTypes?.has("depart");
   const arrived = notifiedTypes?.has("arrive");
 
