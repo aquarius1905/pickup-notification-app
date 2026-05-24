@@ -67,11 +67,12 @@ export default function UsersScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load(setLoading);
-  }, [load]);
-
+  const loadUsers = useCallback(() => load(setLoading), [load]);
   const handleRefresh = useCallback(() => load(setRefreshing), [load]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const resetForm = () => {
     setName("");
@@ -130,7 +131,7 @@ export default function UsersScreen() {
         await createServiceUser(name.trim(), lineId.trim(), draft);
       }
       resetForm();
-      await load(setLoading);
+      await loadUsers();
     } catch (error) {
       Alert.alert("エラー", getErrorMessage(error));
     } finally {
@@ -148,7 +149,7 @@ export default function UsersScreen() {
           try {
             await deleteServiceUser(user.id);
             if (editingUser?.id === user.id) resetForm();
-            await load(setLoading);
+            await loadUsers();
           } catch (error) {
             Alert.alert("エラー", getErrorMessage(error));
           }

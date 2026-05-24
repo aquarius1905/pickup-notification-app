@@ -34,11 +34,12 @@ export function useServiceUsers() {
     [],
   );
 
-  useEffect(() => {
-    load(setFetching);
-  }, [load]);
-
+  const loadUsers = useCallback(() => load(setFetching), [load]);
   const refresh = useCallback(() => load(setRefreshing), [load]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const notify = (eventType: "depart" | "arrive") => {
     if (!selectedUser) {
