@@ -14,6 +14,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_KEY, type Facility, fetchFacility, updateFacilityName } from "../../lib/api";
+import { colors } from "../../lib/theme";
 
 export default function FacilityScreen() {
   const [facility, setFacility] = useState<Facility | null>(null);
@@ -97,7 +98,7 @@ export default function FacilityScreen() {
               disabled={submitting}
             >
               {submitting ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={styles.saveButtonText}>保存</Text>
               )}
@@ -131,7 +132,7 @@ export default function FacilityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.white,
   },
   keyboardView: {
     flex: 1,
@@ -152,24 +153,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#333",
+    color: colors.textDark,
     marginBottom: 8,
   },
   hint: {
     fontSize: 13,
-    color: "#666",
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 12,
   },
   saveButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: "center",
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   saveButtonText: {
-    color: "#fff",
+    color: colors.white,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     gap: 12,
@@ -194,18 +195,18 @@ const styles = StyleSheet.create({
   apiKeyText: {
     flex: 1,
     fontSize: 13,
-    color: "#444",
+    color: colors.textMid,
     fontFamily: "monospace",
   },
   copyButton: {
-    backgroundColor: "#f3f4f6",
+    backgroundColor: colors.bgMuted,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
   },
   copyButtonText: {
     fontSize: 13,
-    color: "#2563eb",
+    color: colors.primary,
     fontWeight: "600",
   },
 });

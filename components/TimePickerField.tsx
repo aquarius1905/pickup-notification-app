@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { formatTimeForDisplay } from "../lib/schedule";
+import { colors } from "../lib/theme";
 
 type Props = {
   value: string | null;
@@ -160,29 +161,29 @@ export function TimePickerField({
 const styles = StyleSheet.create({
   field: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
-    backgroundColor: "#fff",
+    backgroundColor: colors.white,
   },
   valueText: {
     fontSize: 16,
-    color: "#111",
+    color: colors.text,
   },
   placeholderText: {
     fontSize: 16,
-    color: "#999",
+    color: colors.textMuted,
   },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: colors.backdrop,
     justifyContent: "center",
     alignItems: "center",
   },
   sheet: {
     width: "85%",
     maxHeight: "70%",
-    backgroundColor: "#fff",
+    backgroundColor: colors.white,
     borderRadius: 12,
     overflow: "hidden",
     paddingTop: 16,
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#111",
+    color: colors.text,
     textAlign: "center",
     marginBottom: 12,
   },
@@ -198,7 +199,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: "#eee",
+    borderColor: colors.borderLight,
     height: 280,
   },
   column: {
@@ -206,29 +207,29 @@ const styles = StyleSheet.create({
   },
   columnLabel: {
     fontSize: 13,
-    color: "#666",
+    color: colors.textSecondary,
     fontWeight: "600",
     textAlign: "center",
     paddingVertical: 8,
-    backgroundColor: "#f9fafb",
+    backgroundColor: colors.bgLight,
     borderBottomWidth: 1,
-    borderColor: "#eee",
+    borderColor: colors.borderLight,
   },
   option: {
     paddingVertical: 12,
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: colors.bgMuted,
   },
   optionSelected: {
-    backgroundColor: "#eff6ff",
+    backgroundColor: colors.primaryLight,
   },
   optionText: {
     fontSize: 18,
-    color: "#333",
+    color: colors.textDark,
   },
   optionTextSelected: {
-    color: "#2563eb",
+    color: colors.primary,
     fontWeight: "700",
   },
   footer: {
@@ -241,19 +242,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     alignItems: "center",
   },
   clearText: {
     fontSize: 15,
-    color: "#666",
+    color: colors.textSecondary,
     fontWeight: "600",
   },
   confirmButton: {
     flex: 2,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: "#2563eb",
+    backgroundColor: colors.primary,
     alignItems: "center",
   },
   confirmButtonDisabled: {
@@ -261,7 +262,7 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     fontSize: 15,
-    color: "#fff",
+    color: colors.white,
     fontWeight: "700",
   },
 });

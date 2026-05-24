@@ -31,6 +31,7 @@ import {
   formatSchedule,
   formatTimeForDisplay,
 } from "../../lib/schedule";
+import { colors } from "../../lib/theme";
 
 function normalizeScheduleForEdit(schedule: Schedule): Schedule {
   const result: Schedule = {};
@@ -245,7 +246,7 @@ export default function UsersScreen() {
                     disabled={submitting}
                   >
                     {submitting ? (
-                      <ActivityIndicator color="#fff" />
+                      <ActivityIndicator color={colors.white} />
                     ) : (
                       <Text style={styles.submitButtonText}>
                         {editingUser ? "更新" : "追加"}
@@ -326,7 +327,7 @@ export default function UsersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.white,
   },
   keyboardView: {
     flex: 1,
@@ -339,7 +340,7 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontSize: 14,
-    color: "#666",
+    color: colors.textSecondary,
     marginBottom: 24,
   },
   form: {
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
@@ -355,7 +356,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 13,
-    color: "#666",
+    color: colors.textSecondary,
     marginTop: 8,
     marginBottom: 6,
     fontWeight: "600",
@@ -370,20 +371,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     alignItems: "center",
   },
   weekdayButtonSelected: {
-    backgroundColor: "#2563eb",
-    borderColor: "#2563eb",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   weekdayText: {
     fontSize: 14,
-    color: "#666",
+    color: colors.textSecondary,
     fontWeight: "600",
   },
   weekdayTextSelected: {
-    color: "#fff",
+    color: colors.white,
   },
   dayTimeRow: {
     flexDirection: "row",
@@ -395,7 +396,7 @@ const styles = StyleSheet.create({
     width: 28,
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: colors.textDark,
     textAlign: "center",
   },
   timeField: {
@@ -408,7 +409,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 1,
-    backgroundColor: "#2563eb",
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: "center",
@@ -417,7 +418,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   submitButtonText: {
-    color: "#fff",
+    color: colors.white,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -426,11 +427,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
   },
   cancelButtonText: {
     fontSize: 16,
-    color: "#666",
+    color: colors.textSecondary,
   },
   loader: {
     marginTop: 32,
@@ -441,7 +442,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
     marginBottom: 8,
   },
@@ -454,19 +455,19 @@ const styles = StyleSheet.create({
   },
   scheduleText: {
     fontSize: 13,
-    color: "#444",
+    color: colors.textMid,
     marginTop: 4,
     lineHeight: 18,
   },
   linkedBadge: {
     fontSize: 13,
-    color: "#16a34a",
+    color: colors.success,
     fontWeight: "600",
     marginTop: 4,
   },
   inviteCode: {
     fontSize: 13,
-    color: "#666",
+    color: colors.textSecondary,
     marginTop: 4,
     fontFamily: "monospace",
   },
@@ -475,18 +476,18 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   editText: {
-    color: "#2563eb",
+    color: colors.primary,
     fontSize: 14,
     fontWeight: "600",
   },
   deleteText: {
-    color: "#dc2626",
+    color: colors.danger,
     fontSize: 14,
     fontWeight: "600",
   },
   emptyText: {
     textAlign: "center",
-    color: "#999",
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 32,
     lineHeight: 22,

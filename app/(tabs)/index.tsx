@@ -19,6 +19,7 @@ import {
   getCurrentWeekday,
   getDaySchedule,
 } from "../../lib/schedule";
+import { colors } from "../../lib/theme";
 
 type NotifyButtonProps = {
   label: string;
@@ -40,7 +41,7 @@ function NotifyButton({
       disabled={disabled}
     >
       {disabled ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color={colors.white} />
       ) : (
         <Text style={styles.buttonText}>{label}</Text>
       )}
@@ -161,7 +162,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.white,
     padding: 24,
   },
   title: {
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 14,
-    color: "#666",
+    color: colors.textSecondary,
     marginBottom: 24,
   },
   sectionHeader: {
@@ -183,11 +184,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#666",
+    color: colors.textSecondary,
   },
   toggleText: {
     fontSize: 14,
-    color: "#2563eb",
+    color: colors.primary,
     fontWeight: "600",
   },
   list: {
@@ -207,28 +208,28 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   departButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: colors.primary,
   },
   arriveButton: {
-    backgroundColor: "#16a34a",
+    backgroundColor: colors.success,
   },
   disabledButton: {
     opacity: 0.5,
   },
   buttonText: {
-    color: "#fff",
+    color: colors.white,
     fontSize: 16,
     fontWeight: "700",
   },
   sendingText: {
     textAlign: "center",
     marginTop: 12,
-    color: "#666",
+    color: colors.textSecondary,
     fontSize: 14,
   },
   emptyText: {
     textAlign: "center",
-    color: "#999",
+    color: colors.textMuted,
     fontSize: 14,
     marginTop: 32,
     lineHeight: 22,

@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { colors } from "../lib/theme";
 
 type Props = {
   name: string;
@@ -42,24 +43,24 @@ const styles = StyleSheet.create({
   item: {
     padding: 16,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border,
     borderRadius: 8,
     marginBottom: 8,
   },
   selectedItem: {
-    borderColor: "#2563eb",
-    backgroundColor: "#eff6ff",
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
   name: {
     fontSize: 18,
     fontWeight: "600",
   },
   selectedName: {
-    color: "#2563eb",
+    color: colors.primary,
   },
   subtitle: {
     fontSize: 13,
-    color: "#444",
+    color: colors.textMid,
     marginTop: 4,
   },
   badgeRow: {
@@ -69,12 +70,12 @@ const styles = StyleSheet.create({
   },
   departBadge: {
     fontSize: 12,
-    color: "#2563eb",
+    color: colors.primary,
     fontWeight: "600",
   },
   arriveBadge: {
     fontSize: 12,
-    color: "#16a34a",
+    color: colors.success,
     fontWeight: "600",
   },
 });
