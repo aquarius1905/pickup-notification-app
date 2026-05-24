@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TimePickerField } from "../../components/TimePickerField";
+import { TimePickerField } from "@/components/TimePickerField";
 import {
   type Schedule,
   type ServiceUser,
@@ -23,15 +23,15 @@ import {
   deleteServiceUser,
   fetchServiceUsers,
   updateServiceUser,
-} from "../../lib/api";
-import { getErrorMessage } from "../../lib/error";
+} from "@/lib/api";
+import { getErrorMessage } from "@/lib/error";
 import {
   WEEKDAYS,
   WEEKDAY_LABELS,
   formatSchedule,
   formatTimeForDisplay,
-} from "../../lib/schedule";
-import { colors } from "../../lib/theme";
+} from "@/lib/schedule";
+import { colors } from "@/lib/theme";
 
 function normalizeScheduleForEdit(schedule: Schedule): Schedule {
   const result: Schedule = {};

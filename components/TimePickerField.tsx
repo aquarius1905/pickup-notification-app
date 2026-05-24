@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { formatTimeForDisplay } from "../lib/schedule";
-import { colors } from "../lib/theme";
+import { formatTimeForDisplay } from "@/lib/schedule";
+import { colors } from "@/lib/theme";
 
 type Props = {
   value: string | null;

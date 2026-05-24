@@ -6,8 +6,8 @@ import {
   type ServiceUser,
   fetchServiceUsers,
   sendPickupNotification,
-} from "../lib/api";
-import { getErrorMessage } from "../lib/error";
+} from "@/lib/api";
+import { getErrorMessage } from "@/lib/error";
 
 export type NotifyStatus = Record<string, Set<"depart" | "arrive">>;
 

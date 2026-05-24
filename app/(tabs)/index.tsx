@@ -10,16 +10,16 @@ import {
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ServiceUserItem } from "../../components/ServiceUserItem";
-import { useServiceUsers } from "../../hooks/useServiceUsers";
+import { ServiceUserItem } from "@/components/ServiceUserItem";
+import { useServiceUsers } from "@/hooks/useServiceUsers";
 import {
   WEEKDAY_LABELS,
   filterAndSortByDay,
   formatDayTime,
   getCurrentWeekday,
   getDaySchedule,
-} from "../../lib/schedule";
-import { colors } from "../../lib/theme";
+} from "@/lib/schedule";
+import { colors } from "@/lib/theme";
 
 type NotifyButtonProps = {
   label: string;

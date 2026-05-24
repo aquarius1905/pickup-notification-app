@@ -13,8 +13,8 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { API_KEY, type Facility, fetchFacility, updateFacilityName } from "../../lib/api";
-import { colors } from "../../lib/theme";
+import { API_KEY, type Facility, fetchFacility, updateFacilityName } from "@/lib/api";
+import { colors } from "@/lib/theme";
 
 export default function FacilityScreen() {
   const [facility, setFacility] = useState<Facility | null>(null);
