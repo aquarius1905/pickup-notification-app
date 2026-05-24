@@ -24,6 +24,7 @@ import {
   fetchServiceUsers,
   updateServiceUser,
 } from "../../lib/api";
+import { getErrorMessage } from "../../lib/error";
 import {
   WEEKDAYS,
   WEEKDAY_LABELS,
@@ -131,10 +132,7 @@ export default function UsersScreen() {
       resetForm();
       await load(setLoading);
     } catch (error) {
-      Alert.alert(
-        "エラー",
-        error instanceof Error ? error.message : "保存に失敗しました",
-      );
+      Alert.alert("エラー", getErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -152,10 +150,7 @@ export default function UsersScreen() {
             if (editingUser?.id === user.id) resetForm();
             await load(setLoading);
           } catch (error) {
-            Alert.alert(
-              "エラー",
-              error instanceof Error ? error.message : "削除に失敗しました",
-            );
+            Alert.alert("エラー", getErrorMessage(error));
           }
         },
       },
