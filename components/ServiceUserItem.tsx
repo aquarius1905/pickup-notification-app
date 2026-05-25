@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { colors } from "@/lib/theme";
 
@@ -37,7 +37,7 @@ function ServiceUserItemBase({
   );
 }
 
-export const ServiceUserItem = React.memo(ServiceUserItemBase);
+export const ServiceUserItem = memo(ServiceUserItemBase);
 
 const styles = StyleSheet.create({
   item: {
