@@ -1,4 +1,4 @@
-import type { DaySchedule, Schedule, ServiceUser, Weekday } from "./api";
+import type { DaySchedule, Schedule, ServiceUser, Weekday } from "@/lib/api";
 
 export const WEEKDAYS: readonly Weekday[] = [0, 1, 2, 3, 4, 5, 6] as const;
 export const WEEKDAY_LABELS: Record<Weekday, string> = {
