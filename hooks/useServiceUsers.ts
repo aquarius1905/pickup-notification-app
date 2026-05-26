@@ -2,11 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
-import {
-  type ServiceUser,
-  fetchServiceUsers,
-  sendPickupNotification,
-} from "@/lib/api";
+import type { ServiceUser } from "@/lib/api";
+import { fetchServiceUsers, sendPickupNotification } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
 
 export type NotifyStatus = Record<string, Set<"depart" | "arrive">>;

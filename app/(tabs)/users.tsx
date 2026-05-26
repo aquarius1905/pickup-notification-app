@@ -15,15 +15,8 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TimePickerField } from "@/components/TimePickerField";
-import {
-  type Schedule,
-  type ServiceUser,
-  type Weekday,
-  createServiceUser,
-  deleteServiceUser,
-  fetchServiceUsers,
-  updateServiceUser,
-} from "@/lib/api";
+import type { Schedule, ServiceUser, Weekday } from "@/lib/api";
+import { createServiceUser, deleteServiceUser, fetchServiceUsers, updateServiceUser } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
 import {
   WEEKDAYS,

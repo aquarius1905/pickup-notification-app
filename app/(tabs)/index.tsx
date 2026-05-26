@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { ViewStyle } from "react-native";
 import {
   ActivityIndicator,
   FlatList,
@@ -7,7 +8,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ServiceUserItem } from "@/components/ServiceUserItem";
