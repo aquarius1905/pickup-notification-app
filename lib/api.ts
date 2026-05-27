@@ -40,10 +40,7 @@ type WorkerResponse = {
   facility?: Facility;
 };
 
-/**
- * Workerにリクエストを送る共通関数
- * @throws 通信失敗時・okがfalseの時にErrorを投げる
- */
+/** @throws 通信失敗時・okがfalseの時にErrorを投げる */
 async function callWorker(
   action: string,
   params: Record<string, unknown> = {},
