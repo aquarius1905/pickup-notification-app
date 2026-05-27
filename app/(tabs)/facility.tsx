@@ -15,6 +15,7 @@ import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Facility } from "@/lib/api";
 import { API_KEY, fetchFacility, updateFacilityName } from "@/lib/api";
+import { getErrorMessage } from "@/lib/error";
 import { colors } from "@/lib/theme";
 
 export default function FacilityScreen() {
@@ -57,7 +58,7 @@ export default function FacilityScreen() {
       setFacility(updated);
       Alert.alert("保存しました", `施設名を「${updated.name}」に更新しました`);
     } catch (error) {
-      Alert.alert("エラー", error instanceof Error ? error.message : "保存に失敗しました");
+      Alert.alert("エラー", getErrorMessage(error));
     } finally {
       setSubmitting(false);
     }

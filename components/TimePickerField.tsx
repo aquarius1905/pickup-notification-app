@@ -80,15 +80,14 @@ export function TimePickerField({
   const [draftMinute, setDraftMinute] = useState<number | null>(null);
 
   useEffect(() => {
-    if (open) {
-      if (value) {
-        const [h, m] = value.split(":").map(Number);
-        setDraftHour(h);
-        setDraftMinute(m);
-      } else {
-        setDraftHour(null);
-        setDraftMinute(null);
-      }
+    if (!open) return;
+    if (value) {
+      const [h, m] = value.split(":").map(Number);
+      setDraftHour(h);
+      setDraftMinute(m);
+    } else {
+      setDraftHour(null);
+      setDraftMinute(null);
     }
   }, [open, value]);
 
@@ -258,7 +257,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   confirmButtonDisabled: {
-    opacity: 0.4,
+    opacity: 0.5,
   },
   confirmText: {
     fontSize: 15,
