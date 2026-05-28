@@ -38,7 +38,7 @@ export function useServiceUsers() {
     loadUsers();
   }, [loadUsers]);
 
-  const notify = (eventType: "depart" | "arrive") => {
+  const notify = useCallback((eventType: "depart" | "arrive") => {
     if (!selectedUser) {
       Alert.alert("エラー", "利用者を選択してください");
       return;
@@ -84,7 +84,7 @@ export function useServiceUsers() {
         },
       ],
     );
-  };
+  }, [selectedUser]);
 
   return {
     users,
