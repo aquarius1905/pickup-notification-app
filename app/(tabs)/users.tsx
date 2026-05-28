@@ -59,8 +59,8 @@ export default function UsersScreen() {
       setLoadingFlag(true);
       const data = await fetchServiceUsers();
       setUsers(data);
-    } catch {
-      Alert.alert("エラー", "利用者一覧の取得に失敗しました");
+    } catch (error) {
+      Alert.alert("エラー", getErrorMessage(error));
     } finally {
       setLoadingFlag(false);
     }
