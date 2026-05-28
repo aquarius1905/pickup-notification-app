@@ -6,16 +6,14 @@ const defaultHeaders: HeadersInit = {
   "x-api-key": API_KEY,
 };
 
-/** 通所曜日: 0=日, 1=月, 2=火, 3=水, 4=木, 5=金, 6=土 */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-/** 曜日ごとの送迎時刻。"HH:MM" 形式、未設定は null */
+/** "HH:MM" 形式、未設定は null */
 export type DaySchedule = {
   pickup: string | null;
   dropoff: string | null;
 };
 
-/** 通所スケジュール。キーの存在する曜日 = 通所日 */
 export type Schedule = Partial<Record<`${Weekday}`, DaySchedule>>;
 
 export type ServiceUser = {
