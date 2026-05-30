@@ -73,12 +73,12 @@ export default function UsersScreen() {
     loadUsers();
   }, [loadUsers]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setName("");
     setLineId("");
     setDraft({});
     setEditingUser(null);
-  };
+  }, []);
 
   const startEdit = (user: ServiceUser) => {
     setEditingUser(user);
@@ -111,7 +111,7 @@ export default function UsersScreen() {
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!name.trim()) {
       Alert.alert("エラー", "利用者名を入力してください");
       return;
@@ -136,7 +136,7 @@ export default function UsersScreen() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [name, lineId, draft, editingUser, resetForm, loadUsers]);
 
   const handleDelete = (user: ServiceUser) => {
     Alert.alert("削除確認", `${user.user_name}さんを削除しますか？`, [
