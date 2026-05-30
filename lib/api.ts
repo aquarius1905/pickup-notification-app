@@ -18,8 +18,7 @@ export type Schedule = Partial<Record<`${Weekday}`, DaySchedule>>;
 
 export type ServiceUser = {
   id: string;
-  /** APIレスポンスのフィールド名（バックエンド由来） */
-  patient_name: string;
+  user_name: string;
   line_user_id: string;
   invite_code: string;
   schedule: Schedule;
@@ -67,19 +66,19 @@ export async function sendPickupNotification(
 ): Promise<void> {
   await callWorker(
     "notify",
-    { patientName: userName, eventType },
+    { userName, eventType },
     "通知送信に失敗しました",
   );
 }
 
 export async function createServiceUser(
-  patientName: string,
+  userName: string,
   lineUserId?: string,
   schedule?: Schedule,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "create",
-    { patientName, lineUserId, schedule },
+    { userName, lineUserId, schedule },
     "利用者の追加に失敗しました",
   );
   if (!data.family) throw new Error("利用者の追加に失敗しました");
@@ -88,13 +87,13 @@ export async function createServiceUser(
 
 export async function updateServiceUser(
   id: string,
-  patientName?: string,
+  userName?: string,
   lineUserId?: string,
   schedule?: Schedule,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "update",
-    { id, patientName, lineUserId, schedule },
+    { id, userName, lineUserId, schedule },
     "利用者の更新に失敗しました",
   );
   if (!data.family) throw new Error("利用者の更新に失敗しました");

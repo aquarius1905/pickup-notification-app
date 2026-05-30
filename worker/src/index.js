@@ -121,7 +121,7 @@ async function checkSupabaseResult(res, notFoundError) {
 
 async function handleList(facilityId, env, headers) {
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,patient_name,line_user_id,invite_code,schedule&order=patient_name.asc`,
+    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule&order=user_name.asc`,
     { method: 'GET', headers }
   );
   const families = await res.json();
@@ -129,10 +129,10 @@ async function handleList(facilityId, env, headers) {
 }
 
 async function handleNotify(body, facilityId, env, headers) {
-  const { patientName, eventType } = body;
+  const { userName, eventType } = body;
 
   const familyRes = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?patient_name=eq.${encodeURIComponent(patientName)}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,patient_name`,
+    `${env.SUPABASE_URL}/rest/v1/families?user_name=eq.${encodeURIComponent(userName)}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name`,
     { method: 'GET', headers }
   );
   const families = await familyRes.json();
@@ -142,16 +142,16 @@ async function handleNotify(body, facilityId, env, headers) {
   }
 
   const family = families[0];
-  const safePatientName = family.patient_name?.trim();
+  const safeUserName = family.user_name?.trim();
 
-  if (!safePatientName) {
-    return jsonResponse({ ok: false, error: 'patient_name is empty' }, 500);
+  if (!safeUserName) {
+    return jsonResponse({ ok: false, error: 'user_name is empty' }, 500);
   }
 
   const message =
     eventType === 'arrive'
-      ? `${safePatientName}さんが到着しました`
-      : `${safePatientName}さんが出発しました`;
+      ? `${safeUserName}さんが到着しました`
+      : `${safeUserName}さんが出発しました`;
 
   const lineRes = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
@@ -188,14 +188,14 @@ async function handleNotify(body, facilityId, env, headers) {
 }
 
 async function handleCreate(body, facilityId, env, headers) {
-  const { patientName, lineUserId, schedule } = body;
+  const { userName, lineUserId, schedule } = body;
 
-  if (!patientName || !patientName.trim()) {
+  if (!userName || !userName.trim()) {
     return jsonResponse({ ok: false, error: '利用者名は必須です' }, 400);
   }
 
   const payload = {
-    patient_name: patientName.trim(),
+    user_name: userName.trim(),
     line_user_id: lineUserId || '',
     is_active: true,
     facility_id: facilityId,
@@ -219,14 +219,14 @@ async function handleCreate(body, facilityId, env, headers) {
 }
 
 async function handleUpdate(body, facilityId, env, headers) {
-  const { id, patientName, lineUserId, schedule } = body;
+  const { id, userName, lineUserId, schedule } = body;
 
   if (!id) {
     return jsonResponse({ ok: false, error: 'idは必須です' }, 400);
   }
 
   const updates = {};
-  if (patientName !== undefined) updates.patient_name = patientName.trim();
+  if (userName !== undefined) updates.user_name = userName.trim();
   if (lineUserId !== undefined) updates.line_user_id = lineUserId || '';
   if (schedule !== undefined) updates.schedule = normalizeSchedule(schedule);
 
@@ -350,7 +350,7 @@ async function handleLineWebhook(request, env, headers) {
 
       // 招待コードで利用者を検索
       const familyRes = await fetch(
-        `${env.SUPABASE_URL}/rest/v1/families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,patient_name`,
+        `${env.SUPABASE_URL}/rest/v1/families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,user_name`,
         { method: 'GET', headers }
       );
       const families = await familyRes.json();
@@ -379,7 +379,7 @@ async function handleLineWebhook(request, env, headers) {
       if (updateRes.ok) {
         await replyLineMessage(
           event.replyToken,
-          `${family.patient_name}さんの登録が完了しました。\n送迎の通知をお届けします。`,
+          `${family.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。`,
           env
         );
       } else {

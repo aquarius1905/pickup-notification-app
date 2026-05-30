@@ -82,7 +82,7 @@ export default function UsersScreen() {
 
   const startEdit = (user: ServiceUser) => {
     setEditingUser(user);
-    setName(user.patient_name);
+    setName(user.user_name);
     setLineId(user.line_user_id);
     setDraft(normalizeScheduleForEdit(user.schedule));
   };
@@ -139,7 +139,7 @@ export default function UsersScreen() {
   };
 
   const handleDelete = (user: ServiceUser) => {
-    Alert.alert("削除確認", `${user.patient_name}さんを削除しますか？`, [
+    Alert.alert("削除確認", `${user.user_name}さんを削除しますか？`, [
       { text: "キャンセル", style: "cancel" },
       {
         text: "削除",
@@ -272,7 +272,7 @@ export default function UsersScreen() {
             return (
               <View style={styles.userRow}>
                 <View style={styles.userInfo}>
-                  <Text style={styles.userName}>{item.patient_name}</Text>
+                  <Text style={styles.userName}>{item.user_name}</Text>
                   {scheduleText ? (
                     <Text style={styles.scheduleText}>{scheduleText}</Text>
                   ) : null}

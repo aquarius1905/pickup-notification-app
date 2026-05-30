@@ -117,10 +117,10 @@ export default function HomeScreen() {
         keyExtractor={({ user }) => String(user.id)}
         renderItem={({ item: { user, subtitle } }) => (
           <ServiceUserItem
-            name={user.patient_name}
-            selected={selectedUser === user.patient_name}
+            name={user.user_name}
+            selected={selectedUser === user.user_name}
             onSelect={setSelectedUser}
-            notifiedTypes={notified[user.patient_name]}
+            notifiedTypes={notified[user.user_name]}
             subtitle={subtitle}
           />
         )}
