@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import type { ViewStyle } from "react-native";
 import {
   ActivityIndicator,
@@ -28,7 +28,7 @@ type NotifyButtonProps = {
   disabled: boolean;
 };
 
-function NotifyButton({
+const NotifyButton = memo(function NotifyButton({
   label,
   buttonStyle,
   onPress,
@@ -47,7 +47,7 @@ function NotifyButton({
       )}
     </TouchableOpacity>
   );
-}
+});
 
 export default function HomeScreen() {
   const {
