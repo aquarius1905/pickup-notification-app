@@ -30,8 +30,8 @@ export default function FacilityScreen() {
       const data = await fetchFacility();
       setFacility(data);
       setName(data.name);
-    } catch {
-      Alert.alert("エラー", "施設情報の取得に失敗しました");
+    } catch (error) {
+      Alert.alert("エラー", getErrorMessage(error));
     } finally {
       setLoading(false);
     }
