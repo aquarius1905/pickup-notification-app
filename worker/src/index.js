@@ -124,8 +124,8 @@ async function handleList(facilityId, env, headers) {
     `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule&order=user_name.asc`,
     { method: 'GET', headers }
   );
-  const families = await res.json();
-  return jsonResponse({ ok: true, families });
+  const users = await res.json();
+  return jsonResponse({ ok: true, users });
 }
 
 async function handleNotify(body, facilityId, env, headers) {
@@ -135,14 +135,14 @@ async function handleNotify(body, facilityId, env, headers) {
     `${env.SUPABASE_URL}/rest/v1/families?user_name=eq.${encodeURIComponent(userName)}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name`,
     { method: 'GET', headers }
   );
-  const families = await familyRes.json();
+  const users = await familyRes.json();
 
-  if (!Array.isArray(families) || families.length === 0) {
-    return jsonResponse({ ok: false, error: 'family not found' }, 404);
+  if (!Array.isArray(users) || users.length === 0) {
+    return jsonResponse({ ok: false, error: 'user not found' }, 404);
   }
 
-  const family = families[0];
-  const safeUserName = family.user_name?.trim();
+  const user = users[0];
+  const safeUserName = user.user_name?.trim();
 
   if (!safeUserName) {
     return jsonResponse({ ok: false, error: 'user_name is empty' }, 500);
@@ -160,7 +160,7 @@ async function handleNotify(body, facilityId, env, headers) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      to: family.line_user_id,
+      to: user.line_user_id,
       messages: [{ type: 'text', text: message }],
     }),
   });
@@ -171,7 +171,7 @@ async function handleNotify(body, facilityId, env, headers) {
     method: 'POST',
     headers: { ...headers, Prefer: 'return=minimal' },
     body: JSON.stringify({
-      family_id: family.id,
+      family_id: user.id,
       event_type: eventType,
       message,
       success: lineRes.ok,
@@ -215,7 +215,7 @@ async function handleCreate(body, facilityId, env, headers) {
   }
 
   const created = await res.json();
-  return jsonResponse({ ok: true, family: created[0] }, 201);
+  return jsonResponse({ ok: true, user: created[0] }, 201);
 }
 
 async function handleUpdate(body, facilityId, env, headers) {
@@ -245,7 +245,7 @@ async function handleUpdate(body, facilityId, env, headers) {
 
   const { err, rows } = await checkSupabaseResult(res, '利用者が見つかりません');
   if (err) return err;
-  return jsonResponse({ ok: true, family: rows[0] });
+  return jsonResponse({ ok: true, user: rows[0] });
 }
 
 async function handleDelete(body, facilityId, env, headers) {
@@ -353,9 +353,9 @@ async function handleLineWebhook(request, env, headers) {
         `${env.SUPABASE_URL}/rest/v1/families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,user_name`,
         { method: 'GET', headers }
       );
-      const families = await familyRes.json();
+      const users = await familyRes.json();
 
-      if (!Array.isArray(families) || families.length === 0) {
+      if (!Array.isArray(users) || users.length === 0) {
         await replyLineMessage(
           event.replyToken,
           '招待コードが見つかりません。\nコードをご確認のうえ、もう一度送信してください。',
@@ -364,11 +364,11 @@ async function handleLineWebhook(request, env, headers) {
         continue;
       }
 
-      const family = families[0];
+      const user = users[0];
 
       // line_user_idを紐付け
       const updateRes = await fetch(
-        `${env.SUPABASE_URL}/rest/v1/families?id=eq.${family.id}`,
+        `${env.SUPABASE_URL}/rest/v1/families?id=eq.${user.id}`,
         {
           method: 'PATCH',
           headers: { ...headers, Prefer: 'return=minimal' },
@@ -379,7 +379,7 @@ async function handleLineWebhook(request, env, headers) {
       if (updateRes.ok) {
         await replyLineMessage(
           event.replyToken,
-          `${family.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。`,
+          `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。`,
           env
         );
       } else {

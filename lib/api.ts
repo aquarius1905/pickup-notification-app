@@ -32,8 +32,8 @@ export type Facility = {
 type WorkerResponse = {
   ok: boolean;
   error?: string;
-  families?: ServiceUser[];
-  family?: ServiceUser;
+  users?: ServiceUser[];
+  user?: ServiceUser;
   facility?: Facility;
 };
 
@@ -57,7 +57,7 @@ async function callWorker(
 
 export async function fetchServiceUsers(): Promise<ServiceUser[]> {
   const data = await callWorker("list", {}, "利用者一覧の取得に失敗しました");
-  return data.families ?? [];
+  return data.users ?? [];
 }
 
 export async function sendPickupNotification(
@@ -81,8 +81,8 @@ export async function createServiceUser(
     { userName, lineUserId, schedule },
     "利用者の追加に失敗しました",
   );
-  if (!data.family) throw new Error("利用者の追加に失敗しました");
-  return data.family;
+  if (!data.user) throw new Error("利用者の追加に失敗しました");
+  return data.user;
 }
 
 export async function updateServiceUser(
@@ -96,8 +96,8 @@ export async function updateServiceUser(
     { id, userName, lineUserId, schedule },
     "利用者の更新に失敗しました",
   );
-  if (!data.family) throw new Error("利用者の更新に失敗しました");
-  return data.family;
+  if (!data.user) throw new Error("利用者の更新に失敗しました");
+  return data.user;
 }
 
 export async function deleteServiceUser(id: string): Promise<void> {
