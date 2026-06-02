@@ -1,3 +1,5 @@
+import { HttpError } from "./error";
+
 const WORKER_URL = process.env.EXPO_PUBLIC_WORKER_URL!;
 export const API_KEY = process.env.EXPO_PUBLIC_API_KEY!;
 
@@ -49,7 +51,10 @@ async function callWorker(
     body: JSON.stringify({ action, ...params }),
   });
   const data: WorkerResponse = await response.json();
-  if (!response.ok || !data.ok) {
+  if (!response.ok) {
+    throw new HttpError(data.error ?? errorMessage, response.status);
+  }
+  if (!data.ok) {
     throw new Error(data.error ?? errorMessage);
   }
   return data;
