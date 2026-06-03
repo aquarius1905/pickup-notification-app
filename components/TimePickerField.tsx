@@ -1,3 +1,4 @@
+import { formatTime, formatTimeForDisplay, padZero } from "@/lib/schedule";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -8,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { formatTimeForDisplay } from "@/lib/schedule";
+
 import { colors } from "@/lib/theme";
 
 type Props = {
@@ -50,9 +51,12 @@ function PickerColumn({ label, data, selected, onSelect }: PickerColumnProps) {
               onPress={() => onSelect(item)}
             >
               <Text
-                style={[styles.optionText, isSelected && styles.optionTextSelected]}
+                style={[
+                  styles.optionText,
+                  isSelected && styles.optionTextSelected,
+                ]}
               >
-                {String(item).padStart(2, "0")}
+                {padZero(item)}
               </Text>
             </TouchableOpacity>
           );
@@ -95,7 +99,7 @@ export function TimePickerField({
 
   const confirm = () => {
     if (!canConfirm) return;
-    const formatted = `${String(draftHour).padStart(2, "0")}:${String(draftMinute).padStart(2, "0")}`;
+    const formatted = formatTime(draftHour, draftMinute);
     onChange(formatted);
     setOpen(false);
   };
@@ -143,7 +147,10 @@ export function TimePickerField({
                 <Text style={styles.clearText}>未設定</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.confirmButton, !canConfirm && styles.confirmButtonDisabled]}
+                style={[
+                  styles.confirmButton,
+                  !canConfirm && styles.confirmButtonDisabled,
+                ]}
                 onPress={confirm}
                 disabled={!canConfirm}
               >

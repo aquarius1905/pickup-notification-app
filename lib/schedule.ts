@@ -11,6 +11,14 @@ export const WEEKDAY_LABELS: Record<Weekday, string> = {
   6: "土",
 };
 
+export function padZero(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+export function formatTime(hour: number, minute: number): string {
+  return `${padZero(hour)}:${padZero(minute)}`;
+}
+
 export function formatTimeForDisplay(time: string | null | undefined): string {
   if (!time) return "";
   return time.slice(0, 5);
