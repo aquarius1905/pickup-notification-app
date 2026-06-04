@@ -71,12 +71,8 @@ export default function HomeScreen() {
     [users, today],
   );
   const visibleUsers = useMemo(
-    () =>
-      (showAll ? users : todayUsers).map((user) => ({
-        user,
-        subtitle: formatDayTime(getDaySchedule(user, today)),
-      })),
-    [showAll, users, todayUsers, today],
+    () => (showAll ? users : todayUsers),
+    [showAll, users, todayUsers],
   );
 
   if (fetching) {
@@ -114,14 +110,14 @@ export default function HomeScreen() {
 
       <FlatList
         data={visibleUsers}
-        keyExtractor={({ user }) => String(user.id)}
-        renderItem={({ item: { user, subtitle } }) => (
+        keyExtractor={(user) => String(user.id)}
+        renderItem={({ item: user }) => (
           <ServiceUserItem
             name={user.user_name}
             selected={selectedUser === user.user_name}
             onSelect={setSelectedUser}
             notifiedTypes={notified[user.user_name]}
-            subtitle={subtitle}
+            subtitle={formatDayTime(getDaySchedule(user, today))}
           />
         )}
         style={styles.list}
