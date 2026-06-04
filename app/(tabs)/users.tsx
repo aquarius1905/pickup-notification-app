@@ -23,6 +23,7 @@ import {
   updateServiceUser,
 } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
+import { withAsyncLoading } from "@/lib/asyncLoad";
 import {
   WEEKDAYS,
   WEEKDAY_LABELS,
@@ -55,15 +56,12 @@ export default function UsersScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (setLoadingFlag: (v: boolean) => void) => {
-    try {
-      setLoadingFlag(true);
-      const data = await fetchServiceUsers();
-      setUsers(data);
-    } catch (error) {
-      Alert.alert("エラー", getErrorMessage(error));
-    } finally {
-      setLoadingFlag(false);
-    }
+    const data = await withAsyncLoading(
+      () => fetchServiceUsers(),
+      setLoadingFlag,
+      (error) => Alert.alert("エラー", getErrorMessage(error)),
+    );
+    if (data) setUsers(data);
   }, []);
 
   const loadUsers = useCallback(() => load(setLoading), [load]);

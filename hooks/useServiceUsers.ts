@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import type { ServiceUser } from "@/lib/api";
 import { fetchServiceUsers, sendPickupNotification } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
+import { withAsyncLoading } from "@/lib/asyncLoad";
 
 export type NotifyStatus = Record<string, Set<"depart" | "arrive">>;
 
@@ -18,15 +19,12 @@ export function useServiceUsers() {
 
   const load = useCallback(
     async (setLoadingFlag: (v: boolean) => void) => {
-      try {
-        setLoadingFlag(true);
-        const data = await fetchServiceUsers();
-        setUsers(data);
-      } catch (error) {
-        Alert.alert("エラー", getErrorMessage(error));
-      } finally {
-        setLoadingFlag(false);
-      }
+      const data = await withAsyncLoading(
+        () => fetchServiceUsers(),
+        setLoadingFlag,
+        (error) => Alert.alert("エラー", getErrorMessage(error)),
+      );
+      if (data) setUsers(data);
     },
     [],
   );
