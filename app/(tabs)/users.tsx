@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TimePickerField } from "@/components/TimePickerField";
 import type { Schedule, ServiceUser, Weekday } from "@/lib/api";
@@ -24,6 +23,7 @@ import {
 } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
 import { withAsyncLoading } from "@/lib/asyncLoad";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   WEEKDAYS,
   WEEKDAY_LABELS,
@@ -284,9 +284,8 @@ export default function UsersScreen() {
                   ) : (
                     <TouchableOpacity
                       onPress={async () => {
-                        await Clipboard.setStringAsync(item.invite_code);
-                        Alert.alert(
-                          "コピーしました",
+                        await copyToClipboard(
+                          item.invite_code,
                           `招待コード: ${item.invite_code}`,
                         );
                       }}

@@ -11,11 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Facility } from "@/lib/api";
 import { API_KEY, fetchFacility, updateFacilityName } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
+import { copyToClipboard } from "@/lib/clipboard";
 import { colors } from "@/lib/theme";
 
 export default function FacilityScreen() {
@@ -65,8 +65,7 @@ export default function FacilityScreen() {
   };
 
   const handleCopyApiKey = async () => {
-    await Clipboard.setStringAsync(API_KEY);
-    Alert.alert("コピーしました", "APIキーをクリップボードにコピーしました");
+    await copyToClipboard(API_KEY, "APIキーをクリップボードにコピーしました");
   };
 
   if (loading) {
