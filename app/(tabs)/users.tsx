@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -111,6 +111,11 @@ export default function UsersScreen() {
     });
   };
 
+  const scheduledDays = useMemo(
+    () => WEEKDAYS.filter((day) => draft[`${day}`]),
+    [draft],
+  );
+
   const handleSubmit = useCallback(async () => {
     if (!name.trim()) {
       Alert.alert("エラー", "利用者名を入力してください");
@@ -211,7 +216,7 @@ export default function UsersScreen() {
                   })}
                 </View>
 
-                {WEEKDAYS.filter((day) => draft[`${day}`]).map((day) => {
+                {scheduledDays.map((day) => {
                   const entry = draft[`${day}`]!;
                   return (
                     <View key={day} style={styles.dayTimeRow}>
