@@ -8,6 +8,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import { colors } from "@/lib/theme";
@@ -32,16 +33,17 @@ type PickerColumnProps = {
   data: number[];
   selected: number | null;
   onSelect: (n: number) => void;
+  initialNumToRender: number;
 };
 
-function PickerColumn({ label, data, selected, onSelect }: PickerColumnProps) {
+function PickerColumn({ label, data, selected, onSelect, initialNumToRender }: PickerColumnProps) {
   return (
     <View style={styles.column}>
       <Text style={styles.columnLabel}>{label}</Text>
       <FlatList
         data={data}
         keyExtractor={(n) => String(n)}
-        initialNumToRender={20}
+        initialNumToRender={initialNumToRender}
         extraData={selected}
         renderItem={({ item }) => {
           const isSelected = selected === item;
@@ -74,8 +76,15 @@ export function TimePickerField({
   maxHour = 22,
   step = 5,
 }: Props) {
+  const windowDimensions = useWindowDimensions();
   const [open, setOpen] = useState(false);
   const display = formatTimeForDisplay(value);
+
+  const initialNumToRender = useMemo(() => {
+    const sheetMaxHeight = windowDimensions.height * 0.7;
+    const ITEM_HEIGHT = 50;
+    return Math.max(Math.ceil(sheetMaxHeight / ITEM_HEIGHT), 10);
+  }, [windowDimensions.height]);
 
   const hours = useMemo(() => range(minHour, maxHour), [minHour, maxHour]);
   const minutes = useMemo(() => range(0, 59, step), [step]);
@@ -133,12 +142,14 @@ export function TimePickerField({
                 data={hours}
                 selected={draftHour}
                 onSelect={setDraftHour}
+                initialNumToRender={initialNumToRender}
               />
               <PickerColumn
                 label="分"
                 data={minutes}
                 selected={draftMinute}
                 onSelect={setDraftMinute}
+                initialNumToRender={initialNumToRender}
               />
             </View>
 
