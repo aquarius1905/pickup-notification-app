@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +24,7 @@ import {
 import { getErrorMessage } from "@/lib/error";
 import { withAsyncLoading } from "@/lib/asyncLoad";
 import { copyToClipboard } from "@/lib/clipboard";
+import { formReducer, type FormState } from "@/lib/scheduleFormReducer";
 import {
   WEEKDAYS,
   WEEKDAY_LABELS,
@@ -32,26 +33,16 @@ import {
 } from "@/lib/schedule";
 import { colors } from "@/lib/theme";
 
-function normalizeScheduleForEdit(schedule: Schedule): Schedule {
-  const result: Schedule = {};
-  for (const day of WEEKDAYS) {
-    const entry = schedule[`${day}`];
-    if (!entry) continue;
-    result[`${day}`] = {
-      pickup: entry.pickup ? formatTimeForDisplay(entry.pickup) : null,
-      dropoff: entry.dropoff ? formatTimeForDisplay(entry.dropoff) : null,
-    };
-  }
-  return result;
-}
 
 export default function UsersScreen() {
   const [users, setUsers] = useState<ServiceUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("");
-  const [lineId, setLineId] = useState("");
-  const [draft, setDraft] = useState<Schedule>({});
-  const [editingUser, setEditingUser] = useState<ServiceUser | null>(null);
+  const [form, dispatch] = useReducer(formReducer, {
+    name: "",
+    lineId: "",
+    draft: {},
+    editingUser: null,
+  });
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -72,65 +63,46 @@ export default function UsersScreen() {
   }, [loadUsers]);
 
   const resetForm = useCallback(() => {
-    setName("");
-    setLineId("");
-    setDraft({});
-    setEditingUser(null);
+    dispatch({ type: "reset" });
   }, []);
 
-  const startEdit = (user: ServiceUser) => {
-    setEditingUser(user);
-    setName(user.user_name);
-    setLineId(user.line_user_id);
-    setDraft(normalizeScheduleForEdit(user.schedule));
-  };
+  const startEdit = useCallback((user: ServiceUser) => {
+    dispatch({ type: "startEdit", payload: user });
+  }, []);
 
-  const toggleWeekday = (day: Weekday) => {
-    setDraft((prev) => {
-      const key = `${day}` as const;
-      if (prev[key]) {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      }
-      return { ...prev, [key]: { pickup: null, dropoff: null } };
-    });
-  };
+  const toggleWeekday = useCallback((day: Weekday) => {
+    dispatch({ type: "toggleWeekday", payload: day });
+  }, []);
 
-  const updateTime = (
-    day: Weekday,
-    field: "pickup" | "dropoff",
-    value: string | null,
-  ) => {
-    setDraft((prev) => {
-      const key = `${day}` as const;
-      const entry = prev[key] ?? { pickup: null, dropoff: null };
-      return { ...prev, [key]: { ...entry, [field]: value } };
-    });
-  };
+  const updateTime = useCallback(
+    (day: Weekday, field: "pickup" | "dropoff", value: string | null) => {
+      dispatch({ type: "updateTime", payload: { day, field, value } });
+    },
+    [],
+  );
 
   const scheduledDays = useMemo(
-    () => WEEKDAYS.filter((day) => draft[`${day}`]),
-    [draft],
+    () => WEEKDAYS.filter((day) => form.draft[`${day}`]),
+    [form.draft],
   );
 
   const handleSubmit = useCallback(async () => {
-    if (!name.trim()) {
+    if (!form.name.trim()) {
       Alert.alert("エラー", "利用者名を入力してください");
       return;
     }
 
     try {
       setSubmitting(true);
-      if (editingUser) {
+      if (form.editingUser) {
         await updateServiceUser(
-          editingUser.id,
-          name.trim(),
-          lineId.trim(),
-          draft,
+          form.editingUser.id,
+          form.name.trim(),
+          form.lineId.trim(),
+          form.draft,
         );
       } else {
-        await createServiceUser(name.trim(), lineId.trim(), draft);
+        await createServiceUser(form.name.trim(), form.lineId.trim(), form.draft);
       }
       resetForm();
       await loadUsers();
@@ -139,7 +111,7 @@ export default function UsersScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [name, lineId, draft, editingUser, resetForm, loadUsers]);
+  }, [form, resetForm, loadUsers]);
 
   const handleDelete = (user: ServiceUser) => {
     Alert.alert("削除確認", `${user.user_name}さんを削除しますか？`, [
@@ -150,7 +122,7 @@ export default function UsersScreen() {
         onPress: async () => {
           try {
             await deleteServiceUser(user.id);
-            if (editingUser?.id === user.id) resetForm();
+            if (form.editingUser?.id === user.id) resetForm();
             await loadUsers();
           } catch (error) {
             Alert.alert("エラー", getErrorMessage(error));
@@ -178,20 +150,20 @@ export default function UsersScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="利用者名"
-                  value={name}
-                  onChangeText={setName}
+                  value={form.name}
+                  onChangeText={(v) => dispatch({ type: "setName", payload: v })}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="LINE ID（任意）"
-                  value={lineId}
-                  onChangeText={setLineId}
+                  value={form.lineId}
+                  onChangeText={(v) => dispatch({ type: "setLineId", payload: v })}
                 />
 
                 <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
                 <View style={styles.weekdayRow}>
                   {WEEKDAYS.map((day) => {
-                    const selected = Boolean(draft[`${day}`]);
+                    const selected = Boolean(form.draft[`${day}`]);
                     return (
                       <TouchableOpacity
                         key={day}
@@ -215,7 +187,7 @@ export default function UsersScreen() {
                 </View>
 
                 {scheduledDays.map((day) => {
-                  const entry = draft[`${day}`]!;
+                  const entry = form.draft[`${day}`]!;
                   return (
                     <View key={day} style={styles.dayTimeRow}>
                       <Text style={styles.dayLabel}>{WEEKDAY_LABELS[day]}</Text>
@@ -250,11 +222,11 @@ export default function UsersScreen() {
                       <ActivityIndicator color={colors.white} />
                     ) : (
                       <Text style={styles.submitButtonText}>
-                        {editingUser ? "更新" : "追加"}
+                        {form.editingUser ? "更新" : "追加"}
                       </Text>
                     )}
                   </TouchableOpacity>
-                  {editingUser && (
+                  {form.editingUser && (
                     <TouchableOpacity
                       style={styles.cancelButton}
                       onPress={resetForm}
