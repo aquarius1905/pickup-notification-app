@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,27 +11,27 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { TimePickerField } from "@/components/TimePickerField";
-import type { Schedule, ServiceUser, Weekday } from "@/lib/api";
+import type { ServiceUser, Weekday } from "@/lib/api";
+import {
+  WEEKDAYS,
+  WEEKDAY_LABELS,
+  formatSchedule
+} from "@/lib/schedule";
 import {
   createServiceUser,
   deleteServiceUser,
   fetchServiceUsers,
   updateServiceUser,
 } from "@/lib/api";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+
+import { SafeAreaView } from "react-native-safe-area-context";
+import { TimePickerField } from "@/components/TimePickerField";
+import { colors } from "@/lib/theme";
+import { copyToClipboard } from "@/lib/clipboard";
+import { formReducer } from "@/lib/scheduleFormReducer";
 import { getErrorMessage } from "@/lib/error";
 import { withAsyncLoading } from "@/lib/asyncLoad";
-import { copyToClipboard } from "@/lib/clipboard";
-import { formReducer, type FormState } from "@/lib/scheduleFormReducer";
-import {
-  WEEKDAYS,
-  WEEKDAY_LABELS,
-  formatSchedule,
-  formatTimeForDisplay,
-} from "@/lib/schedule";
-import { colors } from "@/lib/theme";
-
 
 export default function UsersScreen() {
   const [users, setUsers] = useState<ServiceUser[]>([]);
@@ -102,7 +101,11 @@ export default function UsersScreen() {
           form.draft,
         );
       } else {
-        await createServiceUser(form.name.trim(), form.lineId.trim(), form.draft);
+        await createServiceUser(
+          form.name.trim(),
+          form.lineId.trim(),
+          form.draft,
+        );
       }
       resetForm();
       await loadUsers();
@@ -151,13 +154,17 @@ export default function UsersScreen() {
                   style={styles.input}
                   placeholder="利用者名"
                   value={form.name}
-                  onChangeText={(v) => dispatch({ type: "setName", payload: v })}
+                  onChangeText={(v) =>
+                    dispatch({ type: "setName", payload: v })
+                  }
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="LINE ID（任意）"
                   value={form.lineId}
-                  onChangeText={(v) => dispatch({ type: "setLineId", payload: v })}
+                  onChangeText={(v) =>
+                    dispatch({ type: "setLineId", payload: v })
+                  }
                 />
 
                 <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
