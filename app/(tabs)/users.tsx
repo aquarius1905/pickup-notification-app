@@ -12,11 +12,7 @@ import {
   View,
 } from "react-native";
 import type { ServiceUser, Weekday } from "@/lib/api";
-import {
-  WEEKDAYS,
-  WEEKDAY_LABELS,
-  formatSchedule
-} from "@/lib/schedule";
+import { WEEKDAYS, WEEKDAY_LABELS, formatSchedule } from "@/lib/schedule";
 import {
   createServiceUser,
   deleteServiceUser,
@@ -69,16 +65,17 @@ export default function UsersScreen() {
     dispatch({ type: "startEdit", payload: user });
   }, []);
 
-  const toggleWeekday = useCallback((day: Weekday) => {
+  const toggleWeekday = (day: Weekday) => {
     dispatch({ type: "toggleWeekday", payload: day });
-  }, []);
+  };
 
-  const updateTime = useCallback(
-    (day: Weekday, field: "pickup" | "dropoff", value: string | null) => {
-      dispatch({ type: "updateTime", payload: { day, field, value } });
-    },
-    [],
-  );
+  const updateTime = (
+    day: Weekday,
+    field: "pickup" | "dropoff",
+    value: string | null,
+  ) => {
+    dispatch({ type: "updateTime", payload: { day, field, value } });
+  };
 
   const scheduledDays = useMemo(
     () => WEEKDAYS.filter((day) => form.draft[`${day}`]),

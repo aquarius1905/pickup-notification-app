@@ -43,11 +43,13 @@ export function filterAndSortByDay(
   users: ServiceUser[],
   day: Weekday,
 ): ServiceUser[] {
+  const scheduleMap = new Map(users.map((u) => [u.id, getDaySchedule(u, day)]));
+
   return users
-    .filter((u) => getDaySchedule(u, day) !== null)
+    .filter((u) => scheduleMap.get(u.id) !== null)
     .sort((a, b) => {
-      const ap = getDaySchedule(a, day)?.pickup ?? "";
-      const bp = getDaySchedule(b, day)?.pickup ?? "";
+      const ap = scheduleMap.get(a.id)?.pickup ?? "";
+      const bp = scheduleMap.get(b.id)?.pickup ?? "";
       if (!ap && !bp) return 0;
       if (!ap) return 1;
       if (!bp) return -1;
@@ -55,10 +57,20 @@ export function filterAndSortByDay(
     });
 }
 
+function getFormattedTimes(entry: DaySchedule | null): {
+  pickup: string;
+  dropoff: string;
+} {
+  if (!entry) return { pickup: "", dropoff: "" };
+  return {
+    pickup: formatTimeForDisplay(entry.pickup),
+    dropoff: formatTimeForDisplay(entry.dropoff),
+  };
+}
+
 export function formatDayTime(entry: DaySchedule | null): string {
   if (!entry) return "";
-  const pickup = formatTimeForDisplay(entry.pickup);
-  const dropoff = formatTimeForDisplay(entry.dropoff);
+  const { pickup, dropoff } = getFormattedTimes(entry);
   if (pickup && dropoff) return `お迎え ${pickup} / お送り ${dropoff}`;
   if (pickup) return `お迎え ${pickup}`;
   if (dropoff) return `お送り ${dropoff}`;
@@ -66,8 +78,7 @@ export function formatDayTime(entry: DaySchedule | null): string {
 }
 
 function formatTimeRange(entry: DaySchedule): string {
-  const pickup = formatTimeForDisplay(entry.pickup);
-  const dropoff = formatTimeForDisplay(entry.dropoff);
+  const { pickup, dropoff } = getFormattedTimes(entry);
   if (pickup && dropoff) return `${pickup}〜${dropoff}`;
   return pickup || dropoff;
 }
