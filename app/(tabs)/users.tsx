@@ -29,6 +29,8 @@ import { formReducer } from "@/lib/scheduleFormReducer";
 import { getErrorMessage } from "@/lib/error";
 import { withAsyncLoading } from "@/lib/asyncLoad";
 
+const WEEKDAY_DISPLAY_ORDER: Weekday[] = [1, 2, 3, 4, 5, 6, 0]; // 月～日
+
 export default function UsersScreen() {
   const [users, setUsers] = useState<ServiceUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,7 +168,7 @@ export default function UsersScreen() {
 
                 <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
                 <View style={styles.weekdayRow}>
-                  {WEEKDAYS.map((day) => {
+                  {WEEKDAY_DISPLAY_ORDER.map((day) => {
                     const selected = Boolean(form.draft[`${day}`]);
                     return (
                       <TouchableOpacity
