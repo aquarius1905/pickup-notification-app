@@ -1,25 +1,37 @@
 import { memo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import type { NotifyPhase } from "@/hooks/useServiceUsers";
 import { colors } from "@/lib/theme";
 
 type Props = {
   name: string;
   selected: boolean;
   onSelect: (name: string) => void;
-  notifiedTypes?: Set<"depart" | "arrive">;
+  notifyPhase?: NotifyPhase;
   subtitle?: string;
+};
+
+const PHASE_LABEL: Record<NotifyPhase, string> = {
+  pickup_departed: "お迎え出発中",
+  pickup_completed: "お迎え済み",
+  dropoff_departed: "お送り出発中",
+  dropoff_completed: "お送り済み",
+};
+
+const PHASE_COLOR: Record<NotifyPhase, string> = {
+  pickup_departed: colors.primary,
+  pickup_completed: colors.success,
+  dropoff_departed: colors.primary,
+  dropoff_completed: colors.success,
 };
 
 function ServiceUserItemBase({
   name,
   selected,
   onSelect,
-  notifiedTypes,
+  notifyPhase,
   subtitle,
 }: Props) {
-  const departed = notifiedTypes?.has("depart");
-  const arrived = notifiedTypes?.has("arrive");
-
   return (
     <TouchableOpacity
       style={[styles.item, selected && styles.selectedItem]}
@@ -27,11 +39,10 @@ function ServiceUserItemBase({
     >
       <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      {(departed || arrived) && (
-        <View style={styles.badgeRow}>
-          {departed && <Text style={styles.departBadge}>出発通知済み</Text>}
-          {arrived && <Text style={styles.arriveBadge}>到着通知済み</Text>}
-        </View>
+      {notifyPhase && (
+        <Text style={[styles.badge, { color: PHASE_COLOR[notifyPhase] }]}>
+          {PHASE_LABEL[notifyPhase]}
+        </Text>
       )}
     </TouchableOpacity>
   );
@@ -63,19 +74,9 @@ const styles = StyleSheet.create({
     color: colors.textMid,
     marginTop: 4,
   },
-  badgeRow: {
-    flexDirection: "row",
-    gap: 8,
+  badge: {
+    fontSize: 12,
+    fontWeight: "600",
     marginTop: 6,
-  },
-  departBadge: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  arriveBadge: {
-    fontSize: 12,
-    color: colors.success,
-    fontWeight: "600",
   },
 });
