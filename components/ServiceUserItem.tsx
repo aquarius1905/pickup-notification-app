@@ -1,7 +1,8 @@
-import { memo } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
+
 import type { NotifyPhase } from "@/hooks/useServiceUsers";
 import { colors } from "@/lib/theme";
+import { memo } from "react";
 
 type Props = {
   name: string;
@@ -12,14 +13,14 @@ type Props = {
   subtitle?: string;
 };
 
-function getBadgeLabel(phase: NotifyPhase, minutes?: 5 | 10): string {
+function getBadgeLabel(phase: NotifyPhase): string {
   switch (phase) {
     case "pickup_approaching":
-      return `お迎え あと${minutes ?? "?"}分通知済み`;
+      return `お迎え連絡通知済み`;
     case "pickup_completed":
       return "お迎え済み";
     case "dropoff_approaching":
-      return `お送り あと${minutes ?? "?"}分通知済み`;
+      return `お送り連絡通知済み`;
     case "dropoff_completed":
       return "お送り済み";
   }
