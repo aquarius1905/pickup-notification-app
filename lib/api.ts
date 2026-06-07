@@ -24,6 +24,7 @@ export type ServiceUser = {
   line_user_id: string;
   invite_code: string;
   schedule: Schedule;
+  notify_minutes: 5 | 10;
 };
 
 export type Facility = {
@@ -65,25 +66,21 @@ export async function fetchServiceUsers(): Promise<ServiceUser[]> {
   return data.users ?? [];
 }
 
-export async function sendPickupNotification(
+export async function sendApproachingNotification(
   userName: string,
-  eventType: "depart" | "arrive",
 ): Promise<void> {
-  await callWorker(
-    "notify",
-    { userName, eventType },
-    "通知送信に失敗しました",
-  );
+  await callWorker("notify", { userName }, "通知送信に失敗しました");
 }
 
 export async function createServiceUser(
   userName: string,
   lineUserId?: string,
   schedule?: Schedule,
+  notifyMinutes?: 5 | 10,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "create",
-    { userName, lineUserId, schedule },
+    { userName, lineUserId, schedule, notifyMinutes },
     "利用者の追加に失敗しました",
   );
   if (!data.user) throw new Error("利用者の追加に失敗しました");
@@ -95,10 +92,11 @@ export async function updateServiceUser(
   userName?: string,
   lineUserId?: string,
   schedule?: Schedule,
+  notifyMinutes?: 5 | 10,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "update",
-    { id, userName, lineUserId, schedule },
+    { id, userName, lineUserId, schedule, notifyMinutes },
     "利用者の更新に失敗しました",
   );
   if (!data.user) throw new Error("利用者の更新に失敗しました");

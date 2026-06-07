@@ -8,20 +8,27 @@ type Props = {
   selected: boolean;
   onSelect: (name: string) => void;
   notifyPhase?: NotifyPhase;
+  notifyMinutes?: 5 | 10;
   subtitle?: string;
 };
 
-const PHASE_LABEL: Record<NotifyPhase, string> = {
-  pickup_departed: "お迎え出発中",
-  pickup_completed: "お迎え済み",
-  dropoff_departed: "お送り出発中",
-  dropoff_completed: "お送り済み",
-};
+function getBadgeLabel(phase: NotifyPhase, minutes?: 5 | 10): string {
+  switch (phase) {
+    case "pickup_approaching":
+      return `お迎え あと${minutes ?? "?"}分通知済み`;
+    case "pickup_completed":
+      return "お迎え済み";
+    case "dropoff_approaching":
+      return `お送り あと${minutes ?? "?"}分通知済み`;
+    case "dropoff_completed":
+      return "お送り済み";
+  }
+}
 
-const PHASE_COLOR: Record<NotifyPhase, string> = {
-  pickup_departed: colors.primary,
+const BADGE_COLOR: Record<NotifyPhase, string> = {
+  pickup_approaching: colors.primary,
   pickup_completed: colors.success,
-  dropoff_departed: colors.primary,
+  dropoff_approaching: colors.primary,
   dropoff_completed: colors.success,
 };
 
@@ -30,6 +37,7 @@ function ServiceUserItemBase({
   selected,
   onSelect,
   notifyPhase,
+  notifyMinutes,
   subtitle,
 }: Props) {
   return (
@@ -39,9 +47,12 @@ function ServiceUserItemBase({
     >
       <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {notifyMinutes && (
+        <Text style={styles.notifyMinutes}>{notifyMinutes}分前通知</Text>
+      )}
       {notifyPhase && (
-        <Text style={[styles.badge, { color: PHASE_COLOR[notifyPhase] }]}>
-          {PHASE_LABEL[notifyPhase]}
+        <Text style={[styles.badge, { color: BADGE_COLOR[notifyPhase] }]}>
+          {getBadgeLabel(notifyPhase, notifyMinutes)}
         </Text>
       )}
     </TouchableOpacity>
@@ -73,6 +84,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textMid,
     marginTop: 4,
+  },
+  notifyMinutes: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   badge: {
     fontSize: 12,

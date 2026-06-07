@@ -4,6 +4,7 @@ import { WEEKDAYS, formatTimeForDisplay } from "@/lib/schedule";
 export type FormState = {
   name: string;
   lineId: string;
+  notifyMinutes: 5 | 10;
   draft: Schedule;
   editingUser: ServiceUser | null;
 };
@@ -11,6 +12,7 @@ export type FormState = {
 export type FormAction =
   | { type: "setName"; payload: string }
   | { type: "setLineId"; payload: string }
+  | { type: "setNotifyMinutes"; payload: 5 | 10 }
   | { type: "toggleWeekday"; payload: Weekday }
   | {
       type: "updateTime";
@@ -38,6 +40,8 @@ export function formReducer(state: FormState, action: FormAction): FormState {
       return { ...state, name: action.payload };
     case "setLineId":
       return { ...state, lineId: action.payload };
+    case "setNotifyMinutes":
+      return { ...state, notifyMinutes: action.payload };
     case "toggleWeekday": {
       const day = action.payload;
       const key = `${day}` as const;
@@ -65,6 +69,7 @@ export function formReducer(state: FormState, action: FormAction): FormState {
       return {
         name: user.user_name,
         lineId: user.line_user_id,
+        notifyMinutes: user.notify_minutes,
         draft: normalizeScheduleForEdit(user.schedule),
         editingUser: user,
       };
@@ -73,6 +78,7 @@ export function formReducer(state: FormState, action: FormAction): FormState {
       return {
         name: "",
         lineId: "",
+        notifyMinutes: 10,
         draft: {},
         editingUser: null,
       };

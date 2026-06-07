@@ -4,20 +4,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
 import type { ServiceUser } from "@/lib/api";
-import { fetchServiceUsers, sendPickupNotification } from "@/lib/api";
+import { fetchServiceUsers, sendApproachingNotification } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
 import { withAsyncLoading } from "@/lib/asyncLoad";
 
 export type NotifyPhase =
-  | "pickup_departed"
+  | "pickup_approaching"
   | "pickup_completed"
-  | "dropoff_departed"
+  | "dropoff_approaching"
   | "dropoff_completed";
 
-type NotifyEntry = { phase: NotifyPhase; date: string };
+export type NotifyEntry = { phase: NotifyPhase; date: string; minutes?: 5 | 10 };
 export type NotifyStatus = Record<string, NotifyEntry>;
 
-const STORAGE_KEY = "notifyStatus";
+const STORAGE_KEY = "notifyStatus_v2";
 
 function getTodayString(): string {
   const d = new Date();
@@ -44,20 +44,6 @@ async function saveNotifyStatus(status: NotifyStatus): Promise<void> {
   } catch {
     // 保存失敗はサイレントに無視（UIへの影響なし）
   }
-}
-
-function advancePhase(
-  current: NotifyPhase | undefined,
-  eventType: "depart" | "arrive",
-): NotifyPhase | null {
-  if (eventType === "depart") {
-    if (!current) return "pickup_departed";
-    if (current === "pickup_completed") return "dropoff_departed";
-  } else {
-    if (current === "pickup_departed") return "pickup_completed";
-    if (current === "dropoff_departed") return "dropoff_completed";
-  }
-  return null;
 }
 
 export function useServiceUsers() {
@@ -111,22 +97,28 @@ export function useServiceUsers() {
     return () => sub.remove();
   }, []);
 
-  const notify = useCallback(
-    (eventType: "depart" | "arrive") => {
+  // 「あと◯分」通知を送信し、*_approaching フェーズへ
+  const notifyApproaching = useCallback(
+    () => {
       if (!selectedUser) {
         Alert.alert("エラー", "利用者を選択してください");
         return;
       }
       const targetUser = selectedUser;
       const currentPhase = notified[targetUser]?.phase;
-      const nextPhase = advancePhase(currentPhase, eventType);
+
+      const nextPhase: NotifyPhase | null =
+        !currentPhase ? "pickup_approaching"
+        : currentPhase === "pickup_completed" ? "dropoff_approaching"
+        : null;
 
       if (!nextPhase) return;
 
-      const label = eventType === "depart" ? "出発" : "到着";
+      const minutes = users.find((u) => u.user_name === targetUser)?.notify_minutes ?? 10;
+      const label = nextPhase === "pickup_approaching" ? "お迎え" : "お送り";
       Alert.alert(
         "確認",
-        `${targetUser}さんに${label}通知を送りますか？`,
+        `${targetUser}さんにあと${minutes}分で到着の通知を送りますか？`,
         [
           { text: "キャンセル", style: "cancel" },
           {
@@ -134,16 +126,16 @@ export function useServiceUsers() {
             onPress: async () => {
               try {
                 setSending(true);
-                await sendPickupNotification(targetUser, eventType);
+                await sendApproachingNotification(targetUser);
                 setSelectedUser(null);
                 Burnt.toast({
-                  title: `${targetUser}さんの${label}通知を送りました`,
+                  title: `${targetUser}さんに${label}あと${minutes}分の通知を送りました`,
                   preset: "done",
                 });
                 setNotified((prev) => {
                   const next = {
                     ...prev,
-                    [targetUser]: { phase: nextPhase, date: getTodayString() },
+                    [targetUser]: { phase: nextPhase, date: getTodayString(), minutes },
                   };
                   saveNotifyStatus(next);
                   return next;
@@ -161,8 +153,37 @@ export function useServiceUsers() {
         ],
       );
     },
-    [selectedUser, notified],
+    [selectedUser, notified, users],
   );
+
+  // お迎え済み / お送り済みを記録（LINE通知なし）
+  const markComplete = useCallback(() => {
+    if (!selectedUser) return;
+    const targetUser = selectedUser;
+    const currentPhase = notified[targetUser]?.phase;
+
+    const nextPhase: NotifyPhase | null =
+      currentPhase === "pickup_approaching" ? "pickup_completed"
+      : currentPhase === "dropoff_approaching" ? "dropoff_completed"
+      : null;
+
+    if (!nextPhase) return;
+
+    const label = nextPhase === "pickup_completed" ? "お迎え" : "お送り";
+    setSelectedUser(null);
+    setNotified((prev) => {
+      const next = {
+        ...prev,
+        [targetUser]: { phase: nextPhase, date: getTodayString() },
+      };
+      saveNotifyStatus(next);
+      return next;
+    });
+    Burnt.toast({
+      title: `${targetUser}さんを${label}済みにしました`,
+      preset: "done",
+    });
+  }, [selectedUser, notified]);
 
   return {
     users,
@@ -172,7 +193,8 @@ export function useServiceUsers() {
     refreshing,
     refresh,
     sending,
-    notify,
+    notifyApproaching,
+    markComplete,
     notified,
   } as const;
 }

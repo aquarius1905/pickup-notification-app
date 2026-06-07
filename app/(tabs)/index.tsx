@@ -1,5 +1,11 @@
+import {
+  WEEKDAY_LABELS,
+  filterAndSortByDay,
+  formatDayTime,
+  getCurrentWeekday,
+  getDaySchedule,
+} from "@/lib/schedule";
 import { memo, useMemo, useState } from "react";
-import type { ViewStyle } from "react-native";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,17 +15,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+
 import { ServiceUserItem } from "@/components/ServiceUserItem";
 import { useServiceUsers } from "@/hooks/useServiceUsers";
-import {
-  WEEKDAY_LABELS,
-  filterAndSortByDay,
-  formatDayTime,
-  getCurrentWeekday,
-  getDaySchedule,
-} from "@/lib/schedule";
 import { colors } from "@/lib/theme";
+import type { ViewStyle } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type NotifyButtonProps = {
   label: string;
@@ -58,7 +59,8 @@ export default function HomeScreen() {
     refreshing,
     refresh,
     sending,
-    notify,
+    notifyApproaching,
+    markComplete,
     notified,
   } = useServiceUsers();
   const [showAll, setShowAll] = useState(false);
@@ -73,6 +75,16 @@ export default function HomeScreen() {
   const visibleUsers = useMemo(
     () => (showAll ? users : todayUsers),
     [showAll, users, todayUsers],
+  );
+
+  const selectedEntry = selectedUser ? notified[selectedUser] : undefined;
+  const isApproaching =
+    selectedEntry?.phase === "pickup_approaching" ||
+    selectedEntry?.phase === "dropoff_approaching";
+  const isDone = selectedEntry?.phase === "dropoff_completed";
+  const selectedUserMinutes = useMemo(
+    () => users.find((u) => u.user_name === selectedUser)?.notify_minutes ?? 10,
+    [users, selectedUser],
   );
 
   if (fetching) {
@@ -99,7 +111,7 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>
           {showAll
             ? `全員（${users.length}名）`
-            : `本日（${todayLabel}）の利用者（${todayUsers.length}名）`}
+            : `本日の利用者（${todayUsers.length}名）`}
         </Text>
         <TouchableOpacity onPress={() => setShowAll((v) => !v)}>
           <Text style={styles.toggleText}>
@@ -117,6 +129,7 @@ export default function HomeScreen() {
             selected={selectedUser === user.user_name}
             onSelect={setSelectedUser}
             notifyPhase={notified[user.user_name]?.phase}
+            notifyMinutes={user.notify_minutes}
             subtitle={formatDayTime(getDaySchedule(user, today))}
           />
         )}
@@ -133,20 +146,27 @@ export default function HomeScreen() {
         }
       />
 
-      {selectedUser && (
+      {selectedUser && !isDone && (
         <View style={styles.buttonRow}>
-          <NotifyButton
-            label="出発"
-            buttonStyle={styles.departButton}
-            onPress={() => notify("depart")}
-            disabled={sending}
-          />
-          <NotifyButton
-            label="到着"
-            buttonStyle={styles.arriveButton}
-            onPress={() => notify("arrive")}
-            disabled={sending}
-          />
+          {isApproaching ? (
+            <NotifyButton
+              label={
+                selectedEntry?.phase === "pickup_approaching"
+                  ? "お迎え済み"
+                  : "お送り済み"
+              }
+              buttonStyle={styles.completeButton}
+              onPress={markComplete}
+              disabled={sending}
+            />
+          ) : (
+            <NotifyButton
+              label={`あと${selectedUserMinutes}分通知`}
+              buttonStyle={styles.approachButton}
+              onPress={notifyApproaching}
+              disabled={sending}
+            />
+          )}
         </View>
       )}
 
@@ -203,10 +223,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 50,
   },
-  departButton: {
+  approachButton: {
     backgroundColor: colors.primary,
   },
-  arriveButton: {
+  completeButton: {
     backgroundColor: colors.success,
   },
   disabledButton: {

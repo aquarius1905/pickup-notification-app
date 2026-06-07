@@ -121,7 +121,7 @@ async function checkSupabaseResult(res, notFoundError) {
 
 async function handleList(facilityId, env, headers) {
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule&order=user_name.asc`,
+    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule,notify_minutes&order=user_name.asc`,
     { method: 'GET', headers }
   );
   const users = await res.json();
@@ -129,10 +129,10 @@ async function handleList(facilityId, env, headers) {
 }
 
 async function handleNotify(body, facilityId, env, headers) {
-  const { userName, eventType } = body;
+  const { userName } = body;
 
   const familyRes = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?user_name=eq.${encodeURIComponent(userName)}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name`,
+    `${env.SUPABASE_URL}/rest/v1/families?user_name=eq.${encodeURIComponent(userName)}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name,notify_minutes`,
     { method: 'GET', headers }
   );
   const users = await familyRes.json();
@@ -148,10 +148,7 @@ async function handleNotify(body, facilityId, env, headers) {
     return jsonResponse({ ok: false, error: 'user_name is empty' }, 500);
   }
 
-  const message =
-    eventType === 'arrive'
-      ? `${safeUserName}さんが到着しました`
-      : `${safeUserName}さんが出発しました`;
+  const message = `あと${user.notify_minutes ?? 10}分で到着します`;
 
   const lineRes = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
@@ -172,7 +169,7 @@ async function handleNotify(body, facilityId, env, headers) {
     headers: { ...headers, Prefer: 'return=minimal' },
     body: JSON.stringify({
       family_id: user.id,
-      event_type: eventType,
+      event_type: 'approaching',
       message,
       success: lineRes.ok,
       error_message: lineRes.ok ? null : lineResultText,
@@ -188,7 +185,7 @@ async function handleNotify(body, facilityId, env, headers) {
 }
 
 async function handleCreate(body, facilityId, env, headers) {
-  const { userName, lineUserId, schedule } = body;
+  const { userName, lineUserId, schedule, notifyMinutes } = body;
 
   if (!userName || !userName.trim()) {
     return jsonResponse({ ok: false, error: '利用者名は必須です' }, 400);
@@ -201,6 +198,7 @@ async function handleCreate(body, facilityId, env, headers) {
     facility_id: facilityId,
     invite_code: generateInviteCode(),
     schedule: normalizeSchedule(schedule),
+    notify_minutes: [5, 10].includes(notifyMinutes) ? notifyMinutes : 10,
   };
 
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/families`, {
@@ -219,7 +217,7 @@ async function handleCreate(body, facilityId, env, headers) {
 }
 
 async function handleUpdate(body, facilityId, env, headers) {
-  const { id, userName, lineUserId, schedule } = body;
+  const { id, userName, lineUserId, schedule, notifyMinutes } = body;
 
   if (!id) {
     return jsonResponse({ ok: false, error: 'idは必須です' }, 400);
@@ -229,6 +227,7 @@ async function handleUpdate(body, facilityId, env, headers) {
   if (userName !== undefined) updates.user_name = userName.trim();
   if (lineUserId !== undefined) updates.line_user_id = lineUserId || '';
   if (schedule !== undefined) updates.schedule = normalizeSchedule(schedule);
+  if (notifyMinutes !== undefined) updates.notify_minutes = [5, 10].includes(notifyMinutes) ? notifyMinutes : 10;
 
   if (Object.keys(updates).length === 0) {
     return jsonResponse({ ok: false, error: '更新するフィールドがありません' }, 400);

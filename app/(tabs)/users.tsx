@@ -37,6 +37,7 @@ export default function UsersScreen() {
   const [form, dispatch] = useReducer(formReducer, {
     name: "",
     lineId: "",
+    notifyMinutes: 10,
     draft: {},
     editingUser: null,
   });
@@ -98,12 +99,14 @@ export default function UsersScreen() {
           form.name.trim(),
           form.lineId.trim(),
           form.draft,
+          form.notifyMinutes,
         );
       } else {
         await createServiceUser(
           form.name.trim(),
           form.lineId.trim(),
           form.draft,
+          form.notifyMinutes,
         );
       }
       resetForm();
@@ -165,6 +168,34 @@ export default function UsersScreen() {
                     dispatch({ type: "setLineId", payload: v })
                   }
                 />
+
+                <Text style={styles.fieldLabel}>到着前通知のタイミング</Text>
+                <View style={styles.weekdayRow}>
+                  {([5, 10] as const).map((min) => {
+                    const selected = form.notifyMinutes === min;
+                    return (
+                      <TouchableOpacity
+                        key={min}
+                        style={[
+                          styles.weekdayButton,
+                          selected && styles.weekdayButtonSelected,
+                        ]}
+                        onPress={() =>
+                          dispatch({ type: "setNotifyMinutes", payload: min })
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.weekdayText,
+                            selected && styles.weekdayTextSelected,
+                          ]}
+                        >
+                          {min}分前
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
                 <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
                 <View style={styles.weekdayRow}>
