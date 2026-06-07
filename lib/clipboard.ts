@@ -5,6 +5,10 @@ export async function copyToClipboard(
   text: string,
   successMessage: string,
 ): Promise<void> {
-  await Clipboard.setStringAsync(text);
-  Alert.alert("コピーしました", successMessage);
+  try {
+    await Clipboard.setStringAsync(text);
+    Alert.alert("コピーしました", successMessage);
+  } catch {
+    Alert.alert("エラー", "コピーに失敗しました");
+  }
 }
