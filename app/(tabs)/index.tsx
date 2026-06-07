@@ -161,7 +161,7 @@ export default function HomeScreen() {
             />
           ) : (
             <NotifyButton
-              label={`あと${selectedUserMinutes}分通知`}
+              label={`到着 ${selectedUserMinutes}分前通知`}
               buttonStyle={styles.approachButton}
               onPress={notifyApproaching}
               disabled={sending}
