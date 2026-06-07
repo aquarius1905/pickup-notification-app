@@ -1,3 +1,17 @@
+import type { ServiceUser, Weekday } from "@/lib/api";
+import {
+  createServiceUser,
+  deleteServiceUser,
+  fetchServiceUsers,
+  updateServiceUser,
+} from "@/lib/api";
+import {
+  WEEKDAYS,
+  WEEKDAY_DISPLAY_ORDER,
+  WEEKDAY_LABELS,
+  formatSchedule,
+} from "@/lib/schedule";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,25 +25,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import type { ServiceUser, Weekday } from "@/lib/api";
-import { WEEKDAYS, WEEKDAY_LABELS, formatSchedule } from "@/lib/schedule";
-import {
-  createServiceUser,
-  deleteServiceUser,
-  fetchServiceUsers,
-  updateServiceUser,
-} from "@/lib/api";
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 
-import { SafeAreaView } from "react-native-safe-area-context";
 import { TimePickerField } from "@/components/TimePickerField";
-import { colors } from "@/lib/theme";
-import { copyToClipboard } from "@/lib/clipboard";
-import { formReducer } from "@/lib/scheduleFormReducer";
-import { getErrorMessage } from "@/lib/error";
 import { withAsyncLoading } from "@/lib/asyncLoad";
-
-const WEEKDAY_DISPLAY_ORDER: Weekday[] = [1, 2, 3, 4, 5, 6, 0]; // 月～日
+import { copyToClipboard } from "@/lib/clipboard";
+import { getErrorMessage } from "@/lib/error";
+import { formReducer } from "@/lib/scheduleFormReducer";
+import { colors } from "@/lib/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function UsersScreen() {
   const [users, setUsers] = useState<ServiceUser[]>([]);

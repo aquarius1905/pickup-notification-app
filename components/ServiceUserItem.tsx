@@ -53,7 +53,7 @@ function ServiceUserItemBase({
       )}
       {notifyPhase && (
         <Text style={[styles.badge, { color: BADGE_COLOR[notifyPhase] }]}>
-          {getBadgeLabel(notifyPhase, notifyMinutes)}
+          {getBadgeLabel(notifyPhase)}
         </Text>
       )}
     </TouchableOpacity>

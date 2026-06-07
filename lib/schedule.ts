@@ -1,6 +1,7 @@
 import type { DaySchedule, Schedule, ServiceUser, Weekday } from "@/lib/api";
 
 export const WEEKDAYS: readonly Weekday[] = [0, 1, 2, 3, 4, 5, 6];
+export const WEEKDAY_DISPLAY_ORDER: readonly Weekday[] = [1, 2, 3, 4, 5, 6, 0]; // 月〜日
 export const WEEKDAY_LABELS: Record<Weekday, string> = {
   0: "日",
   1: "月",
@@ -36,7 +37,7 @@ export function getDaySchedule(
 }
 
 export function getScheduledWeekdays(schedule: Schedule): Weekday[] {
-  return WEEKDAYS.filter((day) => schedule[`${day}`]);
+  return WEEKDAY_DISPLAY_ORDER.filter((day) => schedule[`${day}`]);
 }
 
 export function filterAndSortByDay(
