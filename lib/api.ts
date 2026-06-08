@@ -1,7 +1,7 @@
 import { HttpError } from "./error";
 
 const WORKER_URL = process.env.EXPO_PUBLIC_WORKER_URL!;
-export const API_KEY = process.env.EXPO_PUBLIC_API_KEY!;
+const API_KEY = process.env.EXPO_PUBLIC_API_KEY!;
 
 const defaultHeaders: HeadersInit = {
   "Content-Type": "application/json",

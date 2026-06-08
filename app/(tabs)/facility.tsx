@@ -13,9 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Facility } from "@/lib/api";
-import { API_KEY, fetchFacility, updateFacilityName } from "@/lib/api";
+import { fetchFacility, updateFacilityName } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
-import { copyToClipboard } from "@/lib/clipboard";
 import { colors } from "@/lib/theme";
 
 export default function FacilityScreen() {
@@ -64,10 +63,6 @@ export default function FacilityScreen() {
     }
   };
 
-  const handleCopyApiKey = async () => {
-    await copyToClipboard(API_KEY, "APIキーをクリップボードにコピーしました");
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -106,24 +101,6 @@ export default function FacilityScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>APIキー</Text>
-            <Text style={styles.hint}>
-              スタッフのアプリ設定に使用するキーです。
-            </Text>
-            <View style={styles.apiKeyRow}>
-              <Text style={styles.apiKeyText} numberOfLines={1} ellipsizeMode="middle">
-                {API_KEY || "（未設定）"}
-              </Text>
-              <TouchableOpacity
-                style={styles.copyButton}
-                onPress={handleCopyApiKey}
-                disabled={!API_KEY}
-              >
-                <Text style={styles.copyButtonText}>コピー</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
