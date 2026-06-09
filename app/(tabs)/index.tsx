@@ -130,7 +130,7 @@ export default function HomeScreen() {
             onSelect={setSelectedUser}
             notifyPhase={notified[user.user_name]?.phase}
             notifyMinutes={user.notify_minutes}
-            subtitle={formatDayTime(getDaySchedule(user, today))}
+            schedule={formatDayTime(getDaySchedule(user, today))}
           />
         )}
         style={styles.list}

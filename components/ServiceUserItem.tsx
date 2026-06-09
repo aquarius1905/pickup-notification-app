@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import type { NotifyPhase } from "@/hooks/useServiceUsers";
 import { colors } from "@/lib/theme";
@@ -10,7 +10,7 @@ type Props = {
   onSelect: (name: string) => void;
   notifyPhase?: NotifyPhase;
   notifyMinutes?: 5 | 10;
-  subtitle?: string;
+  schedule?: string;
 };
 
 function getBadgeLabel(phase: NotifyPhase): string {
@@ -39,18 +39,22 @@ function ServiceUserItemBase({
   onSelect,
   notifyPhase,
   notifyMinutes,
-  subtitle,
+  schedule,
 }: Props) {
   return (
     <TouchableOpacity
       style={[styles.item, selected && styles.selectedItem]}
       onPress={() => onSelect(name)}
     >
-      <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      {notifyMinutes && (
-        <Text style={styles.notifyMinutes}>{notifyMinutes}分前通知</Text>
-      )}
+      <View style={styles.nameRow}>
+        <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
+        {notifyMinutes && (
+          <View style={styles.minutesBadge}>
+            <Text style={styles.minutesBadgeText}>{notifyMinutes}分前通知</Text>
+          </View>
+        )}
+      </View>
+      {schedule ? <Text style={styles.schedule}>{schedule}</Text> : null}
       {notifyPhase && (
         <Text style={[styles.badge, { color: BADGE_COLOR[notifyPhase] }]}>
           {getBadgeLabel(notifyPhase)}
@@ -81,18 +85,29 @@ const styles = StyleSheet.create({
   selectedName: {
     color: colors.primary,
   },
-  subtitle: {
-    fontSize: 13,
+  schedule: {
+    fontSize: 15,
     color: colors.textMid,
     marginTop: 4,
   },
-  notifyMinutes: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
+  nameRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  minutesBadge: {
+    backgroundColor: colors.textSecondary,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  minutesBadgeText: {
+    fontSize: 13,
+    color: colors.white,
+    fontWeight: "600",
   },
   badge: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: "600",
     marginTop: 6,
   },
