@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS logs (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   family_id   UUID        NOT NULL REFERENCES families(id),
-  event_type  TEXT        NOT NULL CHECK (event_type IN ('depart', 'arrive')),
+  event_type  TEXT        NOT NULL CHECK (event_type IN ('pickup_approaching', 'dropoff_approaching')),
   message     TEXT        NOT NULL,
   success     BOOLEAN     NOT NULL,
   error_message TEXT,

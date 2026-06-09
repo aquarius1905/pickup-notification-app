@@ -126,7 +126,7 @@ export function useServiceUsers() {
             onPress: async () => {
               try {
                 setSending(true);
-                await sendApproachingNotification(targetUser);
+                await sendApproachingNotification(targetUser, nextPhase);
                 setSelectedUser(null);
                 Burnt.toast({
                   title: `${targetUser}さんに${label}あと${minutes}分の通知を送りました`,

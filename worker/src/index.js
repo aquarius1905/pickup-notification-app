@@ -129,7 +129,7 @@ async function handleList(facilityId, env, headers) {
 }
 
 async function handleNotify(body, facilityId, env, headers) {
-  const { userName } = body;
+  const { userName, notifyType } = body;
 
   const familyRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/families?user_name=eq.${encodeURIComponent(userName)}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name,notify_minutes`,
@@ -169,7 +169,7 @@ async function handleNotify(body, facilityId, env, headers) {
     headers: { ...headers, Prefer: 'return=minimal' },
     body: JSON.stringify({
       family_id: user.id,
-      event_type: 'approaching',
+      event_type: notifyType,
       message,
       success: lineRes.ok,
       error_message: lineRes.ok ? null : lineResultText,
