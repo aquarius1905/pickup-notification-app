@@ -134,11 +134,6 @@ const styles = StyleSheet.create({
     color: colors.textDark,
     marginBottom: 8,
   },
-  hint: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -160,31 +155,5 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 16,
     fontWeight: "700",
-  },
-  apiKeyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    gap: 12,
-  },
-  apiKeyText: {
-    flex: 1,
-    fontSize: 13,
-    color: colors.textMid,
-    fontFamily: "monospace",
-  },
-  copyButton: {
-    backgroundColor: colors.bgMuted,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  copyButtonText: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: "600",
   },
 });
