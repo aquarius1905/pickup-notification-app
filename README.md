@@ -59,3 +59,4 @@ npx wrangler deploy
 - **通知履歴（ログ）の画面表示**: 送信ログはDBに記録済み。アプリ上で確認できる画面を追加する。
 - **通知文面のカスタマイズ**: 施設ごとに通知メッセージを変更できるようにする。
 - **`schedule` の持ち方の見直し**: 現状JSONカラムにWeekday単位で格納しているが、拡張性・検索性の観点から別テーブルへの正規化などを検討する。
+- **WorkerのTypeScript化**: `worker/src/index.js` はJSのまま（型なし）。アプリ本体はTypeScriptなので揃えたい。`index.ts`へのリネーム、`@cloudflare/workers-types`の導入、`tsconfig.json`追加などが必要。
