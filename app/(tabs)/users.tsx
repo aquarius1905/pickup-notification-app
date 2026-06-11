@@ -6,7 +6,6 @@ import {
   updateServiceUser,
 } from "@/lib/api";
 import {
-  WEEKDAYS,
   WEEKDAY_DISPLAY_ORDER,
   WEEKDAY_LABELS,
   formatSchedule,
@@ -84,7 +83,7 @@ export default function UsersScreen() {
   };
 
   const scheduledDays = useMemo(
-    () => WEEKDAYS.filter((day) => form.draft[`${day}`]),
+    () => WEEKDAY_DISPLAY_ORDER.filter((day) => form.draft[`${day}`]),
     [form.draft],
   );
 
