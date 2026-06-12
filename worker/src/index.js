@@ -124,6 +124,11 @@ async function handleList(facilityId, env, headers) {
     `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule,notify_minutes&order=user_name.asc`,
     { method: 'GET', headers }
   );
+  if (!res.ok) {
+    const error = await res.text();
+    return jsonResponse({ ok: false, error }, res.status);
+  }
+
   const users = await res.json();
   return jsonResponse({ ok: true, users });
 }
