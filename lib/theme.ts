@@ -3,6 +3,7 @@ export const colors = {
   primaryLight: "#eff6ff",
   success: "#16a34a",
   danger: "#dc2626",
+  warning: "#d97706",
   white: "#fff",
   border: "#ddd",
   borderLight: "#eee",

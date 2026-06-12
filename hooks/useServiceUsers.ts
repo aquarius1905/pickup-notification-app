@@ -97,7 +97,22 @@ export function useServiceUsers() {
     return () => sub.remove();
   }, []);
 
+  const recordNotified = useCallback(
+    (targetUser: string, phase: NotifyPhase, minutes?: 5 | 10) => {
+      setNotified((prev) => {
+        const next = {
+          ...prev,
+          [targetUser]: { phase, date: getTodayString(), minutes },
+        };
+        saveNotifyStatus(next);
+        return next;
+      });
+    },
+    [],
+  );
+
   // 「あと◯分」通知を送信し、*_approaching フェーズへ
+  // LINE未連携の利用者は電話連絡の記録としてログに残す（LINE送信はしない）
   const notifyApproaching = useCallback(
     () => {
       if (!selectedUser) {
@@ -114,46 +129,43 @@ export function useServiceUsers() {
 
       if (!nextPhase) return;
 
-      const minutes = users.find((u) => u.user_name === targetUser)?.notify_minutes ?? 10;
+      const user = users.find((u) => u.user_name === targetUser);
+      const minutes = user?.notify_minutes ?? 10;
       const label = nextPhase === "pickup_approaching" ? "お迎え" : "お送り";
-      Alert.alert(
-        "確認",
-        `${targetUser}さんにあと${minutes}分で到着の通知を送りますか？`,
-        [
-          { text: "キャンセル", style: "cancel" },
-          {
-            text: "送信",
-            onPress: async () => {
-              try {
-                setSending(true);
-                await sendApproachingNotification(targetUser, nextPhase);
-                setSelectedUser(null);
-                Burnt.toast({
-                  title: `${targetUser}さんに${label}あと${minutes}分の通知を送りました`,
-                  preset: "done",
-                });
-                setNotified((prev) => {
-                  const next = {
-                    ...prev,
-                    [targetUser]: { phase: nextPhase, date: getTodayString(), minutes },
-                  };
-                  saveNotifyStatus(next);
-                  return next;
-                });
-              } catch (error) {
-                await Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Error,
-                );
-                Alert.alert("通知失敗", getErrorMessage(error));
-              } finally {
-                setSending(false);
-              }
-            },
+      const isLinked = Boolean(user?.line_user_id);
+
+      const confirmMessage = isLinked
+        ? `${targetUser}さんにあと${minutes}分で到着の通知を送りますか？`
+        : `${targetUser}さんに${label}の電話連絡をしましたか？`;
+      const confirmButtonText = isLinked ? "送信" : "連絡済みにする";
+      const successToastTitle = isLinked
+        ? `${targetUser}さんに${label}あと${minutes}分の通知を送りました`
+        : `${targetUser}さんを${label}連絡済みにしました`;
+
+      Alert.alert("確認", confirmMessage, [
+        { text: "キャンセル", style: "cancel" },
+        {
+          text: confirmButtonText,
+          onPress: async () => {
+            try {
+              setSending(true);
+              await sendApproachingNotification(targetUser, nextPhase);
+              setSelectedUser(null);
+              Burnt.toast({ title: successToastTitle, preset: "done" });
+              recordNotified(targetUser, nextPhase, minutes);
+            } catch (error) {
+              await Haptics.notificationAsync(
+                Haptics.NotificationFeedbackType.Error,
+              );
+              Alert.alert("通知失敗", getErrorMessage(error));
+            } finally {
+              setSending(false);
+            }
           },
-        ],
-      );
+        },
+      ]);
     },
-    [selectedUser, notified, users],
+    [selectedUser, notified, users, recordNotified],
   );
 
   // お迎え済み / お送り済みを記録（LINE通知なし）
@@ -171,19 +183,12 @@ export function useServiceUsers() {
 
     const label = nextPhase === "pickup_completed" ? "お迎え" : "お送り";
     setSelectedUser(null);
-    setNotified((prev) => {
-      const next = {
-        ...prev,
-        [targetUser]: { phase: nextPhase, date: getTodayString() },
-      };
-      saveNotifyStatus(next);
-      return next;
-    });
+    recordNotified(targetUser, nextPhase);
     Burnt.toast({
       title: `${targetUser}さんを${label}済みにしました`,
       preset: "done",
     });
-  }, [selectedUser, notified]);
+  }, [selectedUser, notified, recordNotified]);
 
   return {
     users,

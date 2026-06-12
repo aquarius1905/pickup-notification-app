@@ -82,10 +82,12 @@ export default function HomeScreen() {
     selectedEntry?.phase === "pickup_approaching" ||
     selectedEntry?.phase === "dropoff_approaching";
   const isDone = selectedEntry?.phase === "dropoff_completed";
-  const selectedUserMinutes = useMemo(
-    () => users.find((u) => u.user_name === selectedUser)?.notify_minutes ?? 10,
+  const selectedUserData = useMemo(
+    () => users.find((u) => u.user_name === selectedUser),
     [users, selectedUser],
   );
+  const selectedUserMinutes = selectedUserData?.notify_minutes ?? 10;
+  const selectedUserLinked = Boolean(selectedUserData?.line_user_id);
 
   if (fetching) {
     return (
@@ -131,6 +133,7 @@ export default function HomeScreen() {
             notifyPhase={notified[user.user_name]?.phase}
             notifyMinutes={user.notify_minutes}
             schedule={formatDayTime(getDaySchedule(user, today))}
+            lineLinked={Boolean(user.line_user_id)}
           />
         )}
         style={styles.list}
@@ -161,7 +164,11 @@ export default function HomeScreen() {
             />
           ) : (
             <NotifyButton
-              label={`到着 ${selectedUserMinutes}分前通知`}
+              label={
+                selectedUserLinked
+                  ? `到着 ${selectedUserMinutes}分前通知`
+                  : `到着 ${selectedUserMinutes}分前連絡済み`
+              }
               buttonStyle={styles.approachButton}
               onPress={notifyApproaching}
               disabled={sending}

@@ -11,6 +11,7 @@ type Props = {
   notifyPhase?: NotifyPhase;
   notifyMinutes?: 5 | 10;
   schedule?: string;
+  lineLinked: boolean;
 };
 
 function getBadgeLabel(phase: NotifyPhase): string {
@@ -40,6 +41,7 @@ function ServiceUserItemBase({
   notifyPhase,
   notifyMinutes,
   schedule,
+  lineLinked,
 }: Props) {
   return (
     <TouchableOpacity
@@ -48,11 +50,18 @@ function ServiceUserItemBase({
     >
       <View style={styles.nameRow}>
         <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
-        {notifyMinutes && (
-          <View style={styles.minutesBadge}>
-            <Text style={styles.minutesBadgeText}>{notifyMinutes}分前通知</Text>
-          </View>
-        )}
+        <View style={styles.badgeRow}>
+          {!lineLinked && (
+            <View style={[styles.minutesBadge, styles.unlinkedBadge]}>
+              <Text style={styles.minutesBadgeText}>LINE未連携</Text>
+            </View>
+          )}
+          {notifyMinutes && (
+            <View style={styles.minutesBadge}>
+              <Text style={styles.minutesBadgeText}>{notifyMinutes}分前通知</Text>
+            </View>
+          )}
+        </View>
       </View>
       {schedule ? <Text style={styles.schedule}>{schedule}</Text> : null}
       {notifyPhase && (
@@ -95,11 +104,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  badgeRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
   minutesBadge: {
     backgroundColor: colors.textSecondary,
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
+  },
+  unlinkedBadge: {
+    backgroundColor: colors.warning,
   },
   minutesBadgeText: {
     fontSize: 13,

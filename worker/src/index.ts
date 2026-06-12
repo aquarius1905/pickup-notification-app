@@ -196,6 +196,23 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
 
   const message = `あと${user.notify_minutes ?? 10}分で到着します`;
 
+  if (!user.line_user_id) {
+    // LINE未連携：電話連絡の記録のみ行う（LINE送信はしない）
+    await fetch(`${env.SUPABASE_URL}/rest/v1/logs`, {
+      method: 'POST',
+      headers: { ...headers, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        family_id: user.id,
+        event_type: notifyType,
+        message: `（電話連絡）${message}`,
+        success: true,
+        error_message: null,
+      }),
+    });
+
+    return jsonResponse({ ok: true, messageSent: message, lineBody: null });
+  }
+
   const lineRes = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
