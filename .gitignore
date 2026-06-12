@@ -36,6 +36,7 @@ yarn-error.*
 
 # Cloudflare Workers
 .dev.vars
+.wrangler/
 
 # Claude Code
 .claude/
