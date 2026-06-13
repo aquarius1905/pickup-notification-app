@@ -30,7 +30,7 @@ import { withAsyncLoading } from "@/lib/asyncLoad";
 import { copyToClipboard } from "@/lib/clipboard";
 import { showErrorAlert } from "@/lib/error";
 import { formReducer } from "@/lib/scheduleFormReducer";
-import { colors } from "@/lib/theme";
+import { colors, inputStyle } from "@/lib/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function UsersScreen() {
@@ -358,11 +358,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    ...inputStyle,
     marginBottom: 8,
   },
   fieldLabel: {

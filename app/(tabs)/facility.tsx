@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { Facility } from "@/lib/api";
 import { fetchFacility, updateFacilityName } from "@/lib/api";
 import { showErrorAlert } from "@/lib/error";
-import { colors } from "@/lib/theme";
+import { colors, inputStyle } from "@/lib/theme";
 
 export default function FacilityScreen() {
   const [facility, setFacility] = useState<Facility | null>(null);
@@ -135,11 +135,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    ...inputStyle,
     marginBottom: 12,
   },
   saveButton: {

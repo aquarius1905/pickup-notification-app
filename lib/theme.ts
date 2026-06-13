@@ -1,3 +1,5 @@
+import type { TextStyle } from "react-native";
+
 export const colors = {
   primary: "#2563eb",
   primaryLight: "#eff6ff",
@@ -16,3 +18,11 @@ export const colors = {
   textMuted: "#999",
   backdrop: "rgba(0,0,0,0.4)",
 } as const;
+
+export const inputStyle: TextStyle = {
+  borderWidth: 1,
+  borderColor: colors.border,
+  borderRadius: 8,
+  padding: 12,
+  fontSize: 16,
+};
