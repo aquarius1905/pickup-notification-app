@@ -92,6 +92,26 @@ function jsonResponse(data: unknown, status = 200): Response {
   });
 }
 
+function supabaseFetch(env: Env, path: string, init: RequestInit): Promise<Response> {
+  return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, init);
+}
+
+type LogEntry = {
+  family_id: string;
+  event_type: string;
+  message: string;
+  success: boolean;
+  error_message: string | null;
+};
+
+async function writeLog(env: Env, headers: SupabaseHeaders, entry: LogEntry): Promise<void> {
+  await supabaseFetch(env, 'logs', {
+    method: 'POST',
+    headers: { ...headers, Prefer: 'return=minimal' },
+    body: JSON.stringify(entry),
+  });
+}
+
 function normalizeTime(input: unknown): string | null {
   if (input === null || input === undefined || input === '') return null;
   if (typeof input !== 'string') return null;
@@ -125,8 +145,9 @@ function generateInviteCode(): string {
 }
 
 async function authenticateFacility(apiKey: string, env: Env, headers: SupabaseHeaders): Promise<Facility | null> {
-  const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/facilities?api_key=eq.${encodeURIComponent(apiKey)}&is_active=eq.true&select=id,name&limit=1`,
+  const res = await supabaseFetch(
+    env,
+    `facilities?api_key=eq.${encodeURIComponent(apiKey)}&is_active=eq.true&select=id,name&limit=1`,
     { method: 'GET', headers }
   );
   const facilities = (await res.json()) as unknown;
@@ -157,8 +178,9 @@ async function checkSupabaseResult<T>(res: Response, notFoundError: string): Pro
 }
 
 async function handleList(facilityId: string, env: Env, headers: SupabaseHeaders): Promise<Response> {
-  const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule,notify_minutes&order=user_name.asc`,
+  const res = await supabaseFetch(
+    env,
+    `families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule,notify_minutes&order=user_name.asc`,
     { method: 'GET', headers }
   );
   if (!res.ok) {
@@ -177,8 +199,9 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
     return jsonResponse({ ok: false, error: '通知の処理でエラーが発生しました。' }, 400);
   }
 
-  const familyRes = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?user_name=eq.${encodeURIComponent(userName ?? '')}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name,notify_minutes`,
+  const familyRes = await supabaseFetch(
+    env,
+    `families?user_name=eq.${encodeURIComponent(userName ?? '')}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name,notify_minutes`,
     { method: 'GET', headers }
   );
   const users = (await familyRes.json()) as unknown;
@@ -198,16 +221,12 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
 
   if (!user.line_user_id) {
     // LINE未連携：電話連絡の記録のみ行う（LINE送信はしない）
-    await fetch(`${env.SUPABASE_URL}/rest/v1/logs`, {
-      method: 'POST',
-      headers: { ...headers, Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        family_id: user.id,
-        event_type: notifyType,
-        message: `（電話連絡）${message}`,
-        success: true,
-        error_message: null,
-      }),
+    await writeLog(env, headers, {
+      family_id: user.id,
+      event_type: notifyType,
+      message: `（電話連絡）${message}`,
+      success: true,
+      error_message: null,
     });
 
     return jsonResponse({ ok: true, messageSent: message, lineBody: null });
@@ -227,16 +246,12 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
 
   const lineResultText = await lineRes.text();
 
-  await fetch(`${env.SUPABASE_URL}/rest/v1/logs`, {
-    method: 'POST',
-    headers: { ...headers, Prefer: 'return=minimal' },
-    body: JSON.stringify({
-      family_id: user.id,
-      event_type: notifyType,
-      message,
-      success: lineRes.ok,
-      error_message: lineRes.ok ? null : lineResultText,
-    }),
+  await writeLog(env, headers, {
+    family_id: user.id,
+    event_type: notifyType,
+    message,
+    success: lineRes.ok,
+    error_message: lineRes.ok ? null : lineResultText,
   });
 
   return jsonResponse({
@@ -264,7 +279,7 @@ async function handleCreate(body: RequestBody, facilityId: string, env: Env, hea
     notify_minutes: notifyMinutes === 5 || notifyMinutes === 10 ? notifyMinutes : 10,
   };
 
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/families`, {
+  const res = await supabaseFetch(env, 'families', {
     method: 'POST',
     headers: { ...headers, Prefer: 'return=representation' },
     body: JSON.stringify(payload),
@@ -303,8 +318,9 @@ async function handleUpdate(body: RequestBody, facilityId: string, env: Env, hea
     return jsonResponse({ ok: false, error: '更新するフィールドがありません' }, 400);
   }
 
-  const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?id=eq.${id}&facility_id=eq.${facilityId}`,
+  const res = await supabaseFetch(
+    env,
+    `families?id=eq.${id}&facility_id=eq.${facilityId}`,
     {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=representation' },
@@ -324,8 +340,9 @@ async function handleDelete(body: RequestBody, facilityId: string, env: Env, hea
     return jsonResponse({ ok: false, error: 'idは必須です' }, 400);
   }
 
-  const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/families?id=eq.${id}&facility_id=eq.${facilityId}`,
+  const res = await supabaseFetch(
+    env,
+    `families?id=eq.${id}&facility_id=eq.${facilityId}`,
     {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=representation' },
@@ -345,8 +362,9 @@ async function handleUpdateFacility(body: RequestBody, facilityId: string, env: 
     return jsonResponse({ ok: false, error: '施設名は必須です' }, 400);
   }
 
-  const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/facilities?id=eq.${facilityId}&is_active=eq.true`,
+  const res = await supabaseFetch(
+    env,
+    `facilities?id=eq.${facilityId}&is_active=eq.true`,
     {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=representation' },
@@ -429,8 +447,9 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
       if (!lineUserId) continue;
 
       // 招待コードで利用者を検索
-      const familyRes = await fetch(
-        `${env.SUPABASE_URL}/rest/v1/families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,user_name`,
+      const familyRes = await supabaseFetch(
+        env,
+        `families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,user_name`,
         { method: 'GET', headers }
       );
       const users = (await familyRes.json()) as unknown;
@@ -447,8 +466,9 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
       const user = users[0] as { id: string; user_name: string };
 
       // line_user_idを紐付け
-      const updateRes = await fetch(
-        `${env.SUPABASE_URL}/rest/v1/families?id=eq.${user.id}`,
+      const updateRes = await supabaseFetch(
+        env,
+        `families?id=eq.${user.id}`,
         {
           method: 'PATCH',
           headers: { ...headers, Prefer: 'return=minimal' },
