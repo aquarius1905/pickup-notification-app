@@ -28,7 +28,7 @@ import {
 import { TimePickerField } from "@/components/TimePickerField";
 import { withAsyncLoading } from "@/lib/asyncLoad";
 import { copyToClipboard } from "@/lib/clipboard";
-import { getErrorMessage } from "@/lib/error";
+import { showErrorAlert } from "@/lib/error";
 import { formReducer } from "@/lib/scheduleFormReducer";
 import { colors } from "@/lib/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -50,7 +50,7 @@ export default function UsersScreen() {
     const data = await withAsyncLoading(
       () => fetchServiceUsers(),
       setLoadingFlag,
-      (error) => Alert.alert("エラー", getErrorMessage(error)),
+      showErrorAlert,
     );
     if (data) setUsers(data);
   }, []);
@@ -114,7 +114,7 @@ export default function UsersScreen() {
       resetForm();
       await loadUsers();
     } catch (error) {
-      Alert.alert("エラー", getErrorMessage(error));
+      showErrorAlert(error);
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +132,7 @@ export default function UsersScreen() {
             if (form.editingUser?.id === user.id) resetForm();
             await loadUsers();
           } catch (error) {
-            Alert.alert("エラー", getErrorMessage(error));
+            showErrorAlert(error);
           }
         },
       },

@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Facility } from "@/lib/api";
 import { fetchFacility, updateFacilityName } from "@/lib/api";
-import { getErrorMessage } from "@/lib/error";
+import { showErrorAlert } from "@/lib/error";
 import { colors } from "@/lib/theme";
 
 export default function FacilityScreen() {
@@ -30,7 +30,7 @@ export default function FacilityScreen() {
       setFacility(data);
       setName(data.name);
     } catch (error) {
-      Alert.alert("エラー", getErrorMessage(error));
+      showErrorAlert(error);
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ export default function FacilityScreen() {
       setFacility(updated);
       Alert.alert("保存しました", `施設名を「${updated.name}」に更新しました`);
     } catch (error) {
-      Alert.alert("エラー", getErrorMessage(error));
+      showErrorAlert(error);
     } finally {
       setSubmitting(false);
     }

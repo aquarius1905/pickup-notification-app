@@ -1,3 +1,5 @@
+import { Alert } from "react-native";
+
 export class HttpError extends Error {
   constructor(
     message: string,
@@ -28,4 +30,8 @@ export function getErrorMessage(error: unknown): string {
     return error.message;
   }
   return "予期しないエラーが発生しました。";
+}
+
+export function showErrorAlert(error: unknown): void {
+  Alert.alert("エラー", getErrorMessage(error));
 }

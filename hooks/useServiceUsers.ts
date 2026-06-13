@@ -5,7 +5,7 @@ import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
 import type { ServiceUser } from "@/lib/api";
 import { fetchServiceUsers, sendApproachingNotification } from "@/lib/api";
-import { getErrorMessage } from "@/lib/error";
+import { getErrorMessage, showErrorAlert } from "@/lib/error";
 import { withAsyncLoading } from "@/lib/asyncLoad";
 
 export type NotifyPhase =
@@ -63,7 +63,7 @@ export function useServiceUsers() {
       const data = await withAsyncLoading(
         () => fetchServiceUsers(),
         setLoadingFlag,
-        (error) => Alert.alert("エラー", getErrorMessage(error)),
+        showErrorAlert,
       );
       if (data) setUsers(data);
     },
