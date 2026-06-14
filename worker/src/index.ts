@@ -320,7 +320,7 @@ async function handleUpdate(body: RequestBody, facilityId: string, env: Env, hea
 
   const res = await supabaseFetch(
     env,
-    `families?id=eq.${id}&facility_id=eq.${facilityId}`,
+    `families?id=eq.${encodeURIComponent(id)}&facility_id=eq.${facilityId}`,
     {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=representation' },
@@ -342,7 +342,7 @@ async function handleDelete(body: RequestBody, facilityId: string, env: Env, hea
 
   const res = await supabaseFetch(
     env,
-    `families?id=eq.${id}&facility_id=eq.${facilityId}`,
+    `families?id=eq.${encodeURIComponent(id)}&facility_id=eq.${facilityId}`,
     {
       method: 'PATCH',
       headers: { ...headers, Prefer: 'return=representation' },
