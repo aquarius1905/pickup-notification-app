@@ -17,7 +17,7 @@ export type NotifyPhase =
 export type NotifyEntry = { phase: NotifyPhase; date: string; minutes?: 5 | 10 };
 export type NotifyStatus = Record<string, NotifyEntry>;
 
-const STORAGE_KEY = "notifyStatus_v2";
+const STORAGE_KEY = "notifyStatus_v3";
 
 function getTodayString(): string {
   const d = new Date();
@@ -119,8 +119,8 @@ export function useServiceUsers() {
         Alert.alert("エラー", "利用者を選択してください");
         return;
       }
-      const targetUser = selectedUser;
-      const currentPhase = notified[targetUser]?.phase;
+      const targetId = selectedUser;
+      const currentPhase = notified[targetId]?.phase;
 
       const nextPhase: NotifyPhase | null =
         !currentPhase ? "pickup_approaching"
@@ -129,18 +129,19 @@ export function useServiceUsers() {
 
       if (!nextPhase) return;
 
-      const user = users.find((u) => u.user_name === targetUser);
+      const user = users.find((u) => u.id === targetId);
+      const displayName = user?.user_name ?? "";
       const minutes = user?.notify_minutes ?? 10;
       const label = nextPhase === "pickup_approaching" ? "お迎え" : "お送り";
       const isLinked = Boolean(user?.line_user_id);
 
       const confirmMessage = isLinked
-        ? `${targetUser}さんにあと${minutes}分で到着の通知を送りますか？`
-        : `${targetUser}さんに${label}の電話連絡をしましたか？`;
+        ? `${displayName}さんにあと${minutes}分で到着の通知を送りますか？`
+        : `${displayName}さんに${label}の電話連絡をしましたか？`;
       const confirmButtonText = isLinked ? "送信" : "連絡済みにする";
       const successToastTitle = isLinked
-        ? `${targetUser}さんに${label}あと${minutes}分の通知を送りました`
-        : `${targetUser}さんを${label}連絡済みにしました`;
+        ? `${displayName}さんに${label}あと${minutes}分の通知を送りました`
+        : `${displayName}さんを${label}連絡済みにしました`;
 
       Alert.alert("確認", confirmMessage, [
         { text: "キャンセル", style: "cancel" },
@@ -149,10 +150,10 @@ export function useServiceUsers() {
           onPress: async () => {
             try {
               setSending(true);
-              await sendApproachingNotification(targetUser, nextPhase);
+              await sendApproachingNotification(targetId, nextPhase);
               setSelectedUser(null);
               Burnt.toast({ title: successToastTitle, preset: "done" });
-              recordNotified(targetUser, nextPhase, minutes);
+              recordNotified(targetId, nextPhase, minutes);
             } catch (error) {
               await Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Error,
@@ -171,8 +172,8 @@ export function useServiceUsers() {
   // お迎え済み / お送り済みを記録（LINE通知なし）
   const markComplete = useCallback(() => {
     if (!selectedUser) return;
-    const targetUser = selectedUser;
-    const currentPhase = notified[targetUser]?.phase;
+    const targetId = selectedUser;
+    const currentPhase = notified[targetId]?.phase;
 
     const nextPhase: NotifyPhase | null =
       currentPhase === "pickup_approaching" ? "pickup_completed"
@@ -181,14 +182,16 @@ export function useServiceUsers() {
 
     if (!nextPhase) return;
 
+    const user = users.find((u) => u.id === targetId);
+    const displayName = user?.user_name ?? "";
     const label = nextPhase === "pickup_completed" ? "お迎え" : "お送り";
     setSelectedUser(null);
-    recordNotified(targetUser, nextPhase);
+    recordNotified(targetId, nextPhase);
     Burnt.toast({
-      title: `${targetUser}さんを${label}済みにしました`,
+      title: `${displayName}さんを${label}済みにしました`,
       preset: "done",
     });
-  }, [selectedUser, notified, recordNotified]);
+  }, [selectedUser, notified, users, recordNotified]);
 
   return {
     users,

@@ -83,7 +83,7 @@ export default function HomeScreen() {
     selectedEntry?.phase === "dropoff_approaching";
   const isDone = selectedEntry?.phase === "dropoff_completed";
   const selectedUserData = useMemo(
-    () => users.find((u) => u.user_name === selectedUser),
+    () => users.find((u) => u.id === selectedUser),
     [users, selectedUser],
   );
   const selectedUserMinutes = selectedUserData?.notify_minutes ?? 10;
@@ -127,10 +127,11 @@ export default function HomeScreen() {
         keyExtractor={(user) => String(user.id)}
         renderItem={({ item: user }) => (
           <ServiceUserItem
+            id={user.id}
             name={user.user_name}
-            selected={selectedUser === user.user_name}
+            selected={selectedUser === user.id}
             onSelect={setSelectedUser}
-            notifyPhase={notified[user.user_name]?.phase}
+            notifyPhase={notified[user.id]?.phase}
             notifyMinutes={user.notify_minutes}
             schedule={formatDayTime(getDaySchedule(user, today))}
             lineLinked={Boolean(user.line_user_id)}

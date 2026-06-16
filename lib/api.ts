@@ -67,10 +67,10 @@ export async function fetchServiceUsers(): Promise<ServiceUser[]> {
 }
 
 export async function sendApproachingNotification(
-  userName: string,
+  userId: string,
   notifyType: "pickup_approaching" | "dropoff_approaching",
 ): Promise<void> {
-  await callWorker("notify", { userName, notifyType }, "通知送信に失敗しました");
+  await callWorker("notify", { userId, notifyType }, "通知送信に失敗しました");
 }
 
 export async function createServiceUser(

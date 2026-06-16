@@ -5,9 +5,10 @@ import { colors } from "@/lib/theme";
 import { memo } from "react";
 
 type Props = {
+  id: string;
   name: string;
   selected: boolean;
-  onSelect: (name: string) => void;
+  onSelect: (id: string) => void;
   notifyPhase?: NotifyPhase;
   notifyMinutes?: 5 | 10;
   schedule?: string;
@@ -35,6 +36,7 @@ const BADGE_COLOR: Record<NotifyPhase, string> = {
 };
 
 function ServiceUserItemBase({
+  id,
   name,
   selected,
   onSelect,
@@ -46,7 +48,7 @@ function ServiceUserItemBase({
   return (
     <TouchableOpacity
       style={[styles.item, selected && styles.selectedItem]}
-      onPress={() => onSelect(name)}
+      onPress={() => onSelect(id)}
     >
       <View style={styles.nameRow}>
         <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>

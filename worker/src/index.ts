@@ -24,6 +24,7 @@ type FamilyRecord = {
 type RequestBody = {
   action?: string;
   userName?: string;
+  userId?: string;
   notifyType?: string;
   lineUserId?: string;
   schedule?: unknown;
@@ -193,7 +194,7 @@ async function handleList(facilityId: string, env: Env, headers: SupabaseHeaders
 }
 
 async function handleNotify(body: RequestBody, facilityId: string, env: Env, headers: SupabaseHeaders): Promise<Response> {
-  const { userName, notifyType } = body;
+  const { userId, notifyType } = body;
 
   if (notifyType !== 'pickup_approaching' && notifyType !== 'dropoff_approaching') {
     return jsonResponse({ ok: false, error: '通知の処理でエラーが発生しました。' }, 400);
@@ -201,7 +202,7 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
 
   const familyRes = await supabaseFetch(
     env,
-    `families?user_name=eq.${encodeURIComponent(userName ?? '')}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name,notify_minutes`,
+    `families?id=eq.${encodeURIComponent(userId ?? '')}&facility_id=eq.${facilityId}&is_active=eq.true&select=id,line_user_id,user_name,notify_minutes`,
     { method: 'GET', headers }
   );
   const users = (await familyRes.json()) as unknown;
