@@ -1,10 +1,3 @@
-import type {
-  LogsEventTypeFilter,
-  LogsPeriod,
-  NotificationLog,
-} from "@/lib/api";
-import { colors, inputStyle } from "@/lib/theme";
-import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -15,24 +8,23 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-import { fetchNotificationLogs } from "@/lib/api";
-import { showErrorAlert } from "@/lib/error";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const PERIOD_OPTIONS: { value: LogsPeriod; label: string }[] = [
+import type { NotificationLog } from "@/lib/api";
+import { useNotificationLogs } from "@/hooks/useNotificationLogs";
+import { colors, inputStyle } from "@/lib/theme";
+
+const PERIOD_OPTIONS = [
   { value: "today", label: "今日" },
   { value: "week", label: "今週" },
   { value: "all", label: "全期間" },
-];
+] as const;
 
-const EVENT_TYPE_OPTIONS: { value: LogsEventTypeFilter; label: string }[] = [
+const EVENT_TYPE_OPTIONS = [
   { value: "all", label: "全て" },
   { value: "pickup_approaching", label: "お迎え" },
   { value: "dropoff_approaching", label: "お送り" },
-];
-
-const SEARCH_DEBOUNCE_MS = 400;
+] as const;
 
 function formatLogDate(isoString: string): string {
   return new Date(isoString).toLocaleString("ja-JP", {
@@ -86,83 +78,54 @@ function formatErrorMessage(raw: string): string {
   return matched ? matched.message : GENERIC_ERROR_MESSAGE;
 }
 
+type FilterButtonRowProps<T extends string> = {
+  options: readonly { value: T; label: string }[];
+  selected: T;
+  onSelect: (value: T) => void;
+};
+
+function FilterButtonRow<T extends string>({
+  options,
+  selected,
+  onSelect,
+}: FilterButtonRowProps<T>) {
+  return (
+    <View style={styles.filterRow}>
+      {options.map((option) => {
+        const isSelected = selected === option.value;
+        return (
+          <TouchableOpacity
+            key={option.value}
+            style={[styles.filterButton, isSelected && styles.filterButtonSelected]}
+            onPress={() => onSelect(option.value)}
+          >
+            <Text
+              style={[styles.filterText, isSelected && styles.filterTextSelected]}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function LogsScreen() {
-  const [logs, setLogs] = useState<NotificationLog[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [period, setPeriod] = useState<LogsPeriod>("all");
-  const [eventTypeFilter, setEventTypeFilter] =
-    useState<LogsEventTypeFilter>("all");
-
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setDebouncedSearch(searchText.trim()),
-      SEARCH_DEBOUNCE_MS,
-    );
-    return () => clearTimeout(timer);
-  }, [searchText]);
-
-  const loadFirstPage = useCallback(
-    async (setLoadingFlag: (v: boolean) => void) => {
-      setLoadingFlag(true);
-      try {
-        const page = await fetchNotificationLogs({
-          search: debouncedSearch || undefined,
-          period,
-          eventType: eventTypeFilter,
-          offset: 0,
-        });
-        setLogs(page.logs);
-        setHasMore(page.hasMore);
-      } catch (error) {
-        showErrorAlert(error);
-      } finally {
-        setLoadingFlag(false);
-      }
-    },
-    [debouncedSearch, period, eventTypeFilter],
-  );
-
-  useEffect(() => {
-    loadFirstPage(setLoading);
-  }, [loadFirstPage]);
-
-  const handleRefresh = useCallback(
-    () => loadFirstPage(setRefreshing),
-    [loadFirstPage],
-  );
-
-  const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore || loading || refreshing) return;
-    setLoadingMore(true);
-    try {
-      const page = await fetchNotificationLogs({
-        search: debouncedSearch || undefined,
-        period,
-        eventType: eventTypeFilter,
-        offset: logs.length,
-      });
-      setLogs((prev) => [...prev, ...page.logs]);
-      setHasMore(page.hasMore);
-    } catch (error) {
-      showErrorAlert(error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [
-    loadingMore,
-    hasMore,
+  const {
+    logs,
     loading,
     refreshing,
-    debouncedSearch,
+    loadingMore,
+    searchText,
+    setSearchText,
     period,
+    setPeriod,
     eventTypeFilter,
-    logs.length,
-  ]);
+    setEventTypeFilter,
+    refresh,
+    loadMore,
+  } = useNotificationLogs();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -182,54 +145,16 @@ export default function LogsScreen() {
               value={searchText}
               onChangeText={setSearchText}
             />
-            <View style={styles.periodRow}>
-              {PERIOD_OPTIONS.map((option) => {
-                const selected = period === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.periodButton,
-                      selected && styles.periodButtonSelected,
-                    ]}
-                    onPress={() => setPeriod(option.value)}
-                  >
-                    <Text
-                      style={[
-                        styles.periodText,
-                        selected && styles.periodTextSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <View style={styles.periodRow}>
-              {EVENT_TYPE_OPTIONS.map((option) => {
-                const selected = eventTypeFilter === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.periodButton,
-                      selected && styles.periodButtonSelected,
-                    ]}
-                    onPress={() => setEventTypeFilter(option.value)}
-                  >
-                    <Text
-                      style={[
-                        styles.periodText,
-                        selected && styles.periodTextSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <FilterButtonRow
+              options={PERIOD_OPTIONS}
+              selected={period}
+              onSelect={setPeriod}
+            />
+            <FilterButtonRow
+              options={EVENT_TYPE_OPTIONS}
+              selected={eventTypeFilter}
+              onSelect={setEventTypeFilter}
+            />
           </View>
         }
         renderItem={({ item }) => (
@@ -269,7 +194,7 @@ export default function LogsScreen() {
           )
         }
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
         }
       />
       {loading && <ActivityIndicator size="large" style={styles.loader} />}
@@ -297,12 +222,12 @@ const styles = StyleSheet.create({
     ...inputStyle,
     marginBottom: 8,
   },
-  periodRow: {
+  filterRow: {
     flexDirection: "row",
     gap: 6,
     marginBottom: 16,
   },
-  periodButton: {
+  filterButton: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 8,
@@ -310,16 +235,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
   },
-  periodButtonSelected: {
+  filterButtonSelected: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  periodText: {
+  filterText: {
     fontSize: 14,
     color: colors.textSecondary,
     fontWeight: "600",
   },
-  periodTextSelected: {
+  filterTextSelected: {
     color: colors.white,
   },
   loader: {
