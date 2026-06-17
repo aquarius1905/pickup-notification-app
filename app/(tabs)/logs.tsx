@@ -1,3 +1,9 @@
+import type {
+  LogsEventTypeFilter,
+  LogsPeriod,
+  NotificationLog,
+} from "@/lib/api";
+import { colors, inputStyle } from "@/lib/theme";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,17 +15,21 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { LogsPeriod, NotificationLog } from "@/lib/api";
 import { fetchNotificationLogs } from "@/lib/api";
 import { showErrorAlert } from "@/lib/error";
-import { colors, inputStyle } from "@/lib/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const PERIOD_OPTIONS: { value: LogsPeriod; label: string }[] = [
   { value: "today", label: "今日" },
   { value: "week", label: "今週" },
   { value: "all", label: "全期間" },
+];
+
+const EVENT_TYPE_OPTIONS: { value: LogsEventTypeFilter; label: string }[] = [
+  { value: "all", label: "全て" },
+  { value: "pickup_approaching", label: "お迎え" },
+  { value: "dropoff_approaching", label: "お送り" },
 ];
 
 const SEARCH_DEBOUNCE_MS = 400;
@@ -37,31 +47,43 @@ function getEventLabel(eventType: NotificationLog["event_type"]): string {
   return eventType === "pickup_approaching" ? "お迎え通知" : "お送り通知";
 }
 
-/** LINE APIのエラーレスポンス（JSON文字列）から要点だけ取り出す。解析できない場合は元の文字列を返す */
+/** イベント種別と通知文の「あと◯分」を1行にまとめる（例: お送り通知（10分前・電話）） */
+function formatEventSummary(log: NotificationLog): string {
+  const label = getEventLabel(log.event_type);
+  const minutesMatch = log.message.match(/あと(\d+)分で到着します/);
+  if (!minutesMatch) return label;
+  const isPhone = log.message.includes("電話連絡");
+  return isPhone
+    ? `${label}（${minutesMatch[1]}分前・電話）`
+    : `${label}（${minutesMatch[1]}分前）`;
+}
+
+const KNOWN_ERROR_PATTERNS: { test: RegExp; message: string }[] = [
+  {
+    test: /haven.?t added|blocked the (bot|official account)/i,
+    message: "ご家族がLINEをブロックしている、または友だち追加していない可能性があります。",
+  },
+  {
+    test: /reached the limit/i,
+    message: "今月のLINE無料メッセージ送信数の上限に達しました。",
+  },
+  {
+    test: /authentication failed|invalid.*(access token|channel)/i,
+    message: "LINEとの認証に失敗しました。システム管理者にご確認ください。",
+  },
+  {
+    test: /too many requests|rate limit/i,
+    message: "送信が混み合ったため一時的に失敗しました。時間をおいて再度お試しください。",
+  },
+];
+
+const GENERIC_ERROR_MESSAGE =
+  "通知の送信に失敗しました（システムエラー）。\n解消しない場合はシステム担当者にご確認ください。";
+
+/** LINE APIのエラーをよくあるケースは日本語に変換し、それ以外は汎用文にする */
 function formatErrorMessage(raw: string): string {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (parsed && typeof parsed === "object" && "message" in parsed) {
-      const message = String((parsed as { message: unknown }).message);
-      const details = (parsed as { details?: unknown }).details;
-      if (Array.isArray(details)) {
-        const detailMessages = details
-          .map((d) =>
-            d && typeof d === "object" && "message" in d
-              ? String((d as { message: unknown }).message)
-              : null,
-          )
-          .filter((m): m is string => Boolean(m));
-        if (detailMessages.length > 0) {
-          return `${message}（${detailMessages.join(" / ")}）`;
-        }
-      }
-      return message;
-    }
-  } catch {
-    // JSON以外はそのまま表示
-  }
-  return raw;
+  const matched = KNOWN_ERROR_PATTERNS.find((pattern) => pattern.test.test(raw));
+  return matched ? matched.message : GENERIC_ERROR_MESSAGE;
 }
 
 export default function LogsScreen() {
@@ -73,6 +95,8 @@ export default function LogsScreen() {
   const [searchText, setSearchText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [period, setPeriod] = useState<LogsPeriod>("all");
+  const [eventTypeFilter, setEventTypeFilter] =
+    useState<LogsEventTypeFilter>("all");
 
   useEffect(() => {
     const timer = setTimeout(
@@ -89,6 +113,7 @@ export default function LogsScreen() {
         const page = await fetchNotificationLogs({
           search: debouncedSearch || undefined,
           period,
+          eventType: eventTypeFilter,
           offset: 0,
         });
         setLogs(page.logs);
@@ -99,7 +124,7 @@ export default function LogsScreen() {
         setLoadingFlag(false);
       }
     },
-    [debouncedSearch, period],
+    [debouncedSearch, period, eventTypeFilter],
   );
 
   useEffect(() => {
@@ -118,6 +143,7 @@ export default function LogsScreen() {
       const page = await fetchNotificationLogs({
         search: debouncedSearch || undefined,
         period,
+        eventType: eventTypeFilter,
         offset: logs.length,
       });
       setLogs((prev) => [...prev, ...page.logs]);
@@ -127,7 +153,16 @@ export default function LogsScreen() {
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore, loading, refreshing, debouncedSearch, period, logs.length]);
+  }, [
+    loadingMore,
+    hasMore,
+    loading,
+    refreshing,
+    debouncedSearch,
+    period,
+    eventTypeFilter,
+    logs.length,
+  ]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -171,6 +206,30 @@ export default function LogsScreen() {
                 );
               })}
             </View>
+            <View style={styles.periodRow}>
+              {EVENT_TYPE_OPTIONS.map((option) => {
+                const selected = eventTypeFilter === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.periodButton,
+                      selected && styles.periodButtonSelected,
+                    ]}
+                    onPress={() => setEventTypeFilter(option.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.periodText,
+                        selected && styles.periodTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         }
         renderItem={({ item }) => (
@@ -188,8 +247,7 @@ export default function LogsScreen() {
                 {item.success ? "成功" : "失敗"}
               </Text>
             </View>
-            <Text style={styles.eventLabel}>{getEventLabel(item.event_type)}</Text>
-            <Text style={styles.message}>{item.message}</Text>
+            <Text style={styles.eventLabel}>{formatEventSummary(item)}</Text>
             {!item.success && item.error_message ? (
               <Text style={styles.errorMessage}>
                 {formatErrorMessage(item.error_message)}
@@ -199,9 +257,7 @@ export default function LogsScreen() {
           </View>
         )}
         ListFooterComponent={
-          loadingMore ? (
-            <ActivityIndicator style={styles.footerLoader} />
-          ) : null
+          loadingMore ? <ActivityIndicator style={styles.footerLoader} /> : null
         }
         ListEmptyComponent={
           loading ? null : (
@@ -303,15 +359,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
   },
   eventLabel: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textSecondary,
     marginTop: 6,
     fontWeight: "600",
-  },
-  message: {
-    fontSize: 14,
-    color: colors.textMid,
-    marginTop: 2,
   },
   errorMessage: {
     fontSize: 13,
@@ -319,9 +370,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   date: {
-    fontSize: 12,
+    fontSize: 16,
     color: colors.textMuted,
-    marginTop: 8,
+    marginTop: 4,
   },
   emptyText: {
     textAlign: "center",

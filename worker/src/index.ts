@@ -33,6 +33,7 @@ type RequestBody = {
   name?: string;
   search?: unknown;
   period?: unknown;
+  eventType?: unknown;
   offset?: unknown;
 };
 
@@ -222,6 +223,10 @@ async function handleListLogs(body: RequestBody, facilityId: string, env: Env, h
   const offset = typeof body.offset === 'number' && body.offset >= 0 ? body.offset : 0;
   const search = typeof body.search === 'string' ? body.search.trim().replace(/[*,]/g, '') : '';
   const cutoff = getPeriodCutoff(body.period);
+  const eventType =
+    body.eventType === 'pickup_approaching' || body.eventType === 'dropoff_approaching'
+      ? body.eventType
+      : null;
 
   let query =
     `logs?select=id,event_type,message,success,error_message,created_at,family:families!inner(user_name)` +
@@ -231,6 +236,9 @@ async function handleListLogs(body: RequestBody, facilityId: string, env: Env, h
   }
   if (cutoff) {
     query += `&created_at=gte.${encodeURIComponent(cutoff)}`;
+  }
+  if (eventType) {
+    query += `&event_type=eq.${eventType}`;
   }
   // 「もっと見る」判定のため1件多く取得する
   query += `&order=created_at.desc&limit=${LOGS_PAGE_SIZE + 1}&offset=${offset}`;

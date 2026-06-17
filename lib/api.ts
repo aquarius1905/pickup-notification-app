@@ -44,6 +44,11 @@ export type NotificationLog = {
 
 export type LogsPeriod = "today" | "week" | "all";
 
+export type LogsEventTypeFilter =
+  | "all"
+  | "pickup_approaching"
+  | "dropoff_approaching";
+
 export type LogsPage = {
   logs: NotificationLog[];
   hasMore: boolean;
@@ -130,6 +135,7 @@ export async function deleteServiceUser(id: string): Promise<void> {
 export async function fetchNotificationLogs(params: {
   search?: string;
   period?: LogsPeriod;
+  eventType?: LogsEventTypeFilter;
   offset?: number;
 } = {}): Promise<LogsPage> {
   const data = await callWorker("listLogs", params, "通知履歴の取得に失敗しました");
