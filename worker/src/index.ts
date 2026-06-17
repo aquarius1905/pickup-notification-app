@@ -31,6 +31,9 @@ type RequestBody = {
   notifyMinutes?: unknown;
   id?: string;
   name?: string;
+  search?: unknown;
+  period?: unknown;
+  offset?: unknown;
 };
 
 export default {
@@ -70,6 +73,7 @@ export default {
       const facilityId = facility.id;
 
       if (action === 'list') return handleList(facilityId, env, supabaseHeaders);
+      if (action === 'listLogs') return handleListLogs(body, facilityId, env, supabaseHeaders);
       if (action === 'notify') return handleNotify(body, facilityId, env, supabaseHeaders);
       if (action === 'create') return handleCreate(body, facilityId, env, supabaseHeaders);
       if (action === 'update') return handleUpdate(body, facilityId, env, supabaseHeaders);
@@ -191,6 +195,56 @@ async function handleList(facilityId: string, env: Env, headers: SupabaseHeaders
 
   const users = await res.json();
   return jsonResponse({ ok: true, users });
+}
+
+const LOGS_PAGE_SIZE = 20;
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/** "today"/"week"の絞り込み開始時刻（JST基準）をUTC ISO文字列で返す。"all"等はnull */
+function getPeriodCutoff(period: unknown): string | null {
+  if (period !== 'today' && period !== 'week') return null;
+
+  const nowJst = new Date(Date.now() + JST_OFFSET_MS);
+  const startOfTodayJst = Date.UTC(nowJst.getUTCFullYear(), nowJst.getUTCMonth(), nowJst.getUTCDate());
+
+  if (period === 'today') {
+    return new Date(startOfTodayJst - JST_OFFSET_MS).toISOString();
+  }
+
+  // 週は月曜始まり
+  const dayOfWeek = nowJst.getUTCDay(); // 0=日 ... 6=土
+  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const startOfWeekJst = startOfTodayJst - diffToMonday * 24 * 60 * 60 * 1000;
+  return new Date(startOfWeekJst - JST_OFFSET_MS).toISOString();
+}
+
+async function handleListLogs(body: RequestBody, facilityId: string, env: Env, headers: SupabaseHeaders): Promise<Response> {
+  const offset = typeof body.offset === 'number' && body.offset >= 0 ? body.offset : 0;
+  const search = typeof body.search === 'string' ? body.search.trim().replace(/[*,]/g, '') : '';
+  const cutoff = getPeriodCutoff(body.period);
+
+  let query =
+    `logs?select=id,event_type,message,success,error_message,created_at,family:families!inner(user_name)` +
+    `&family.facility_id=eq.${facilityId}`;
+  if (search) {
+    query += `&family.user_name=ilike.*${encodeURIComponent(search)}*`;
+  }
+  if (cutoff) {
+    query += `&created_at=gte.${encodeURIComponent(cutoff)}`;
+  }
+  // 「もっと見る」判定のため1件多く取得する
+  query += `&order=created_at.desc&limit=${LOGS_PAGE_SIZE + 1}&offset=${offset}`;
+
+  const res = await supabaseFetch(env, query, { method: 'GET', headers });
+  if (!res.ok) {
+    const error = await res.text();
+    return jsonResponse({ ok: false, error }, res.status);
+  }
+
+  const rows = (await res.json()) as unknown[];
+  const hasMore = rows.length > LOGS_PAGE_SIZE;
+  const logs = hasMore ? rows.slice(0, LOGS_PAGE_SIZE) : rows;
+  return jsonResponse({ ok: true, logs, hasMore });
 }
 
 async function handleNotify(body: RequestBody, facilityId: string, env: Env, headers: SupabaseHeaders): Promise<Response> {

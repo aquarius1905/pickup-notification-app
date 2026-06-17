@@ -32,12 +32,31 @@ export type Facility = {
   name: string;
 };
 
+export type NotificationLog = {
+  id: string;
+  event_type: "pickup_approaching" | "dropoff_approaching";
+  message: string;
+  success: boolean;
+  error_message: string | null;
+  created_at: string;
+  family: { user_name: string } | null;
+};
+
+export type LogsPeriod = "today" | "week" | "all";
+
+export type LogsPage = {
+  logs: NotificationLog[];
+  hasMore: boolean;
+};
+
 type WorkerResponse = {
   ok: boolean;
   error?: string;
   users?: ServiceUser[];
   user?: ServiceUser;
   facility?: Facility;
+  logs?: NotificationLog[];
+  hasMore?: boolean;
 };
 
 /** @throws 通信失敗時・okがfalseの時にErrorを投げる */
@@ -106,6 +125,15 @@ export async function updateServiceUser(
 
 export async function deleteServiceUser(id: string): Promise<void> {
   await callWorker("delete", { id }, "利用者の削除に失敗しました");
+}
+
+export async function fetchNotificationLogs(params: {
+  search?: string;
+  period?: LogsPeriod;
+  offset?: number;
+} = {}): Promise<LogsPage> {
+  const data = await callWorker("listLogs", params, "通知履歴の取得に失敗しました");
+  return { logs: data.logs ?? [], hasMore: data.hasMore ?? false };
 }
 
 export async function fetchFacility(): Promise<Facility> {
