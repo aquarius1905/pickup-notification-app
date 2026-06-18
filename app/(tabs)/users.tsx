@@ -25,6 +25,7 @@ import {
   View,
 } from "react-native";
 
+import { SelectableButtonRow } from "@/components/SelectableButtonRow";
 import { TimePickerField } from "@/components/TimePickerField";
 import { withAsyncLoading } from "@/lib/asyncLoad";
 import { copyToClipboard } from "@/lib/clipboard";
@@ -32,6 +33,16 @@ import { showErrorAlert } from "@/lib/error";
 import { formReducer } from "@/lib/scheduleFormReducer";
 import { colors, inputStyle } from "@/lib/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const NOTIFY_MINUTES_OPTIONS = [
+  { value: 5, label: "5分前" },
+  { value: 10, label: "10分前" },
+] as const;
+
+const WEEKDAY_OPTIONS = WEEKDAY_DISPLAY_ORDER.map((day) => ({
+  value: day,
+  label: WEEKDAY_LABELS[day],
+}));
 
 export default function UsersScreen() {
   const [users, setUsers] = useState<ServiceUser[]>([]);
@@ -172,58 +183,22 @@ export default function UsersScreen() {
                 />
 
                 <Text style={styles.fieldLabel}>到着前通知のタイミング</Text>
-                <View style={styles.weekdayRow}>
-                  {([5, 10] as const).map((min) => {
-                    const selected = form.notifyMinutes === min;
-                    return (
-                      <TouchableOpacity
-                        key={min}
-                        style={[
-                          styles.weekdayButton,
-                          selected && styles.weekdayButtonSelected,
-                        ]}
-                        onPress={() =>
-                          dispatch({ type: "setNotifyMinutes", payload: min })
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.weekdayText,
-                            selected && styles.weekdayTextSelected,
-                          ]}
-                        >
-                          {min}分前
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <SelectableButtonRow
+                  options={NOTIFY_MINUTES_OPTIONS}
+                  isSelected={(min) => form.notifyMinutes === min}
+                  onSelect={(min) =>
+                    dispatch({ type: "setNotifyMinutes", payload: min })
+                  }
+                  style={styles.weekdayRow}
+                />
 
                 <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
-                <View style={styles.weekdayRow}>
-                  {WEEKDAY_DISPLAY_ORDER.map((day) => {
-                    const selected = Boolean(form.draft[`${day}`]);
-                    return (
-                      <TouchableOpacity
-                        key={day}
-                        style={[
-                          styles.weekdayButton,
-                          selected && styles.weekdayButtonSelected,
-                        ]}
-                        onPress={() => toggleWeekday(day)}
-                      >
-                        <Text
-                          style={[
-                            styles.weekdayText,
-                            selected && styles.weekdayTextSelected,
-                          ]}
-                        >
-                          {WEEKDAY_LABELS[day]}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <SelectableButtonRow
+                  options={WEEKDAY_OPTIONS}
+                  isSelected={(day) => Boolean(form.draft[`${day}`])}
+                  onSelect={toggleWeekday}
+                  style={styles.weekdayRow}
+                />
 
                 {scheduledDays.map((day) => {
                   const entry = form.draft[`${day}`]!;
@@ -369,29 +344,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   weekdayRow: {
-    flexDirection: "row",
-    gap: 6,
     marginBottom: 8,
-  },
-  weekdayButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-  },
-  weekdayButtonSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  weekdayText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: "600",
-  },
-  weekdayTextSelected: {
-    color: colors.white,
   },
   dayTimeRow: {
     flexDirection: "row",

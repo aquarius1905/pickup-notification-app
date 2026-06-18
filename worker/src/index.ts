@@ -102,6 +102,11 @@ function supabaseFetch(env: Env, path: string, init: RequestInit): Promise<Respo
   return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, init);
 }
 
+async function supabaseErrorResponse(res: Response): Promise<Response> {
+  const error = await res.text();
+  return jsonResponse({ ok: false, error }, res.status);
+}
+
 type LogEntry = {
   family_id: string;
   event_type: string;
@@ -189,10 +194,7 @@ async function handleList(facilityId: string, env: Env, headers: SupabaseHeaders
     `families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule,notify_minutes&order=user_name.asc`,
     { method: 'GET', headers }
   );
-  if (!res.ok) {
-    const error = await res.text();
-    return jsonResponse({ ok: false, error }, res.status);
-  }
+  if (!res.ok) return supabaseErrorResponse(res);
 
   const users = await res.json();
   return jsonResponse({ ok: true, users });
@@ -244,10 +246,7 @@ async function handleListLogs(body: RequestBody, facilityId: string, env: Env, h
   query += `&order=created_at.desc&limit=${LOGS_PAGE_SIZE + 1}&offset=${offset}`;
 
   const res = await supabaseFetch(env, query, { method: 'GET', headers });
-  if (!res.ok) {
-    const error = await res.text();
-    return jsonResponse({ ok: false, error }, res.status);
-  }
+  if (!res.ok) return supabaseErrorResponse(res);
 
   const rows = (await res.json()) as unknown[];
   const hasMore = rows.length > LOGS_PAGE_SIZE;
@@ -274,9 +273,8 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
   }
 
   const user = users[0] as FamilyRecord;
-  const safeUserName = user.user_name?.trim();
 
-  if (!safeUserName) {
+  if (!user.user_name?.trim()) {
     return jsonResponse({ ok: false, error: 'user_name is empty' }, 500);
   }
 
@@ -348,10 +346,7 @@ async function handleCreate(body: RequestBody, facilityId: string, env: Env, hea
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
-    const error = await res.text();
-    return jsonResponse({ ok: false, error }, res.status);
-  }
+  if (!res.ok) return supabaseErrorResponse(res);
 
   const created = (await res.json()) as FamilyRecord[];
   return jsonResponse({ ok: true, user: created[0] }, 201);

@@ -5,12 +5,12 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { NotificationLog } from "@/lib/api";
+import { SelectableButtonRow } from "@/components/SelectableButtonRow";
 import { useNotificationLogs } from "@/hooks/useNotificationLogs";
 import { colors, inputStyle } from "@/lib/theme";
 
@@ -78,39 +78,6 @@ function formatErrorMessage(raw: string): string {
   return matched ? matched.message : GENERIC_ERROR_MESSAGE;
 }
 
-type FilterButtonRowProps<T extends string> = {
-  options: readonly { value: T; label: string }[];
-  selected: T;
-  onSelect: (value: T) => void;
-};
-
-function FilterButtonRow<T extends string>({
-  options,
-  selected,
-  onSelect,
-}: FilterButtonRowProps<T>) {
-  return (
-    <View style={styles.filterRow}>
-      {options.map((option) => {
-        const isSelected = selected === option.value;
-        return (
-          <TouchableOpacity
-            key={option.value}
-            style={[styles.filterButton, isSelected && styles.filterButtonSelected]}
-            onPress={() => onSelect(option.value)}
-          >
-            <Text
-              style={[styles.filterText, isSelected && styles.filterTextSelected]}
-            >
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
 export default function LogsScreen() {
   const {
     logs,
@@ -145,15 +112,17 @@ export default function LogsScreen() {
               value={searchText}
               onChangeText={setSearchText}
             />
-            <FilterButtonRow
+            <SelectableButtonRow
               options={PERIOD_OPTIONS}
-              selected={period}
+              isSelected={(value) => period === value}
               onSelect={setPeriod}
+              style={styles.filterRow}
             />
-            <FilterButtonRow
+            <SelectableButtonRow
               options={EVENT_TYPE_OPTIONS}
-              selected={eventTypeFilter}
+              isSelected={(value) => eventTypeFilter === value}
               onSelect={setEventTypeFilter}
+              style={styles.filterRow}
             />
           </View>
         }
@@ -223,29 +192,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   filterRow: {
-    flexDirection: "row",
-    gap: 6,
     marginBottom: 16,
-  },
-  filterButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-  },
-  filterButtonSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: "600",
-  },
-  filterTextSelected: {
-    color: colors.white,
   },
   loader: {
     marginTop: 32,
