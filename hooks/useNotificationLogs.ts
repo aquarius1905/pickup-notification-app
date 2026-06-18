@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { LogsEventTypeFilter, LogsPeriod, NotificationLog } from "@/lib/api";
 import { fetchNotificationLogs } from "@/lib/api";
@@ -18,6 +18,9 @@ export function useNotificationLogs() {
   const [eventTypeFilter, setEventTypeFilter] =
     useState<LogsEventTypeFilter>("all");
 
+  // フィルタ変更や連続実行で古いリクエストの結果を無視するための世代カウンタ
+  const requestIdRef = useRef(0);
+
   useEffect(() => {
     const timer = setTimeout(
       () => setDebouncedSearch(searchText.trim()),
@@ -28,6 +31,7 @@ export function useNotificationLogs() {
 
   const loadFirstPage = useCallback(
     async (setLoadingFlag: (v: boolean) => void) => {
+      const requestId = ++requestIdRef.current;
       setLoadingFlag(true);
       try {
         const page = await fetchNotificationLogs({
@@ -36,12 +40,14 @@ export function useNotificationLogs() {
           eventType: eventTypeFilter,
           offset: 0,
         });
+        if (requestId !== requestIdRef.current) return;
         setLogs(page.logs);
         setHasMore(page.hasMore);
       } catch (error) {
+        if (requestId !== requestIdRef.current) return;
         showErrorAlert(error);
       } finally {
-        setLoadingFlag(false);
+        if (requestId === requestIdRef.current) setLoadingFlag(false);
       }
     },
     [debouncedSearch, period, eventTypeFilter],
@@ -58,6 +64,7 @@ export function useNotificationLogs() {
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || loading || refreshing) return;
+    const requestId = ++requestIdRef.current;
     setLoadingMore(true);
     try {
       const page = await fetchNotificationLogs({
@@ -66,12 +73,14 @@ export function useNotificationLogs() {
         eventType: eventTypeFilter,
         offset: logs.length,
       });
+      if (requestId !== requestIdRef.current) return;
       setLogs((prev) => [...prev, ...page.logs]);
       setHasMore(page.hasMore);
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       showErrorAlert(error);
     } finally {
-      setLoadingMore(false);
+      if (requestId === requestIdRef.current) setLoadingMore(false);
     }
   }, [
     loadingMore,
