@@ -1,0 +1,10 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Android 13+ テーマアイコン用の単色シルエット（OS側で着色される） -->
+  <g transform="translate(512,512) scale(0.85) translate(-554,-442)" fill="#6b7280">
+    <rect x="190" y="300" width="640" height="380" rx="46"/>
+    <circle cx="320" cy="680" r="62"/>
+    <circle cx="700" cy="680" r="62"/>
+    <rect x="720" y="198" width="160" height="104" rx="34"/>
+    <polygon points="758,300 734,348 794,304"/>
+  </g>
+</svg>
