@@ -1,5 +1,5 @@
 import { formatTime, formatTimeForDisplay, padZero } from "@/lib/schedule";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -22,6 +22,8 @@ type Props = {
   step?: number;
 };
 
+const ITEM_HEIGHT = 50;
+
 function range(from: number, to: number, step = 1): number[] {
   const out: number[] = [];
   for (let i = from; i <= to; i += step) out.push(i);
@@ -37,13 +39,31 @@ type PickerColumnProps = {
 };
 
 function PickerColumn({ label, data, selected, onSelect, initialNumToRender }: PickerColumnProps) {
+  const listRef = useRef<FlatList<number>>(null);
+
+  useEffect(() => {
+    if (selected === null) return;
+    const index = data.indexOf(selected);
+    if (index < 0) return;
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0.5 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selected, data]);
+
   return (
     <View style={styles.column}>
       <Text style={styles.columnLabel}>{label}</Text>
       <FlatList
+        ref={listRef}
         data={data}
         keyExtractor={(n) => String(n)}
         initialNumToRender={initialNumToRender}
+        getItemLayout={(_, index) => ({
+          length: ITEM_HEIGHT,
+          offset: ITEM_HEIGHT * index,
+          index,
+        })}
         extraData={selected}
         renderItem={({ item }) => {
           const isSelected = selected === item;
@@ -82,7 +102,6 @@ export function TimePickerField({
 
   const initialNumToRender = useMemo(() => {
     const sheetMaxHeight = windowDimensions.height * 0.7;
-    const ITEM_HEIGHT = 50;
     return Math.max(Math.ceil(sheetMaxHeight / ITEM_HEIGHT), 10);
   }, [windowDimensions.height]);
 
