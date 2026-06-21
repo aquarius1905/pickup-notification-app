@@ -5,7 +5,7 @@ import {
   getCurrentWeekday,
   getDaySchedule,
 } from "@/lib/schedule";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -89,6 +89,13 @@ export default function HomeScreen() {
   const selectedUserMinutes = selectedUserData?.notify_minutes ?? 10;
   const selectedUserLinked = Boolean(selectedUserData?.line_user_id);
 
+  const handleSelectUser = useCallback(
+    (id: string) => {
+      setSelectedUser((prev) => (prev === id ? null : id));
+    },
+    [setSelectedUser],
+  );
+
   if (fetching) {
     return (
       <SafeAreaView style={styles.container}>
@@ -130,7 +137,7 @@ export default function HomeScreen() {
             id={user.id}
             name={user.user_name}
             selected={selectedUser === user.id}
-            onSelect={setSelectedUser}
+            onSelect={handleSelectUser}
             notifyPhase={notified[user.id]?.phase}
             notifyMinutes={user.notify_minutes}
             schedule={formatDayTime(getDaySchedule(user, today))}
