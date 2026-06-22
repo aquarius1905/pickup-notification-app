@@ -56,6 +56,13 @@ export default function UsersScreen() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  const filteredUsers = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    if (!query) return users;
+    return users.filter((u) => u.user_name.toLowerCase().includes(query));
+  }, [users, searchText]);
 
   const load = useCallback(async (setLoadingFlag: (v: boolean) => void) => {
     const data = await withAsyncLoading(
@@ -157,7 +164,7 @@ export default function UsersScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <FlatList
-          data={users}
+          data={filteredUsers}
           keyExtractor={(item) => String(item.id)}
           ListHeaderComponent={
             <View>
@@ -251,6 +258,14 @@ export default function UsersScreen() {
                 </View>
               </View>
 
+              <Text style={styles.sectionTitle}>利用者一覧</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="利用者名で検索"
+                value={searchText}
+                onChangeText={setSearchText}
+              />
+
               {loading && (
                 <ActivityIndicator size="large" style={styles.loader} />
               )}
@@ -296,8 +311,9 @@ export default function UsersScreen() {
           ListEmptyComponent={
             loading ? null : (
               <Text style={styles.emptyText}>
-                利用者が登録されていません。{"\n"}
-                上のフォームから追加してください。
+                {searchText
+                  ? "検索条件に一致する利用者がいません。"
+                  : `利用者が登録されていません。${"\n"}上のフォームから追加してください。`}
               </Text>
             )
           }
@@ -331,6 +347,16 @@ const styles = StyleSheet.create({
   },
   form: {
     marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.textDark,
+    marginBottom: 8,
+  },
+  searchInput: {
+    ...inputStyle,
+    marginBottom: 16,
   },
   input: {
     ...inputStyle,
