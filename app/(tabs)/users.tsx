@@ -1,22 +1,12 @@
-import type { ServiceUser, Weekday } from "@/lib/api";
-import {
-  createServiceUser,
-  deleteServiceUser,
-  fetchServiceUsers,
-  updateServiceUser,
-} from "@/lib/api";
-import {
-  WEEKDAY_DISPLAY_ORDER,
-  WEEKDAY_LABELS,
-  formatSchedule,
-} from "@/lib/schedule";
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import type { ServiceUser } from "@/lib/api";
+import { deleteServiceUser, fetchServiceUsers } from "@/lib/api";
+import { formatSchedule } from "@/lib/schedule";
+import { useCallback, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -25,36 +15,16 @@ import {
   View,
 } from "react-native";
 
-import { SelectableButtonRow } from "@/components/SelectableButtonRow";
-import { TimePickerField } from "@/components/TimePickerField";
 import { withAsyncLoading } from "@/lib/asyncLoad";
 import { copyToClipboard } from "@/lib/clipboard";
 import { showErrorAlert } from "@/lib/error";
-import { formReducer } from "@/lib/scheduleFormReducer";
 import { colors, inputStyle } from "@/lib/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const NOTIFY_MINUTES_OPTIONS = [
-  { value: 5, label: "5分前" },
-  { value: 10, label: "10分前" },
-] as const;
-
-const WEEKDAY_OPTIONS = WEEKDAY_DISPLAY_ORDER.map((day) => ({
-  value: day,
-  label: WEEKDAY_LABELS[day],
-}));
-
 export default function UsersScreen() {
+  const router = useRouter();
   const [users, setUsers] = useState<ServiceUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, dispatch] = useReducer(formReducer, {
-    name: "",
-    lineId: "",
-    notifyMinutes: 10,
-    draft: {},
-    editingUser: null,
-  });
-  const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchText, setSearchText] = useState("");
 
@@ -76,67 +46,28 @@ export default function UsersScreen() {
   const loadUsers = useCallback(() => load(setLoading), [load]);
   const handleRefresh = useCallback(() => load(setRefreshing), [load]);
 
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
-
-  const resetForm = useCallback(() => {
-    dispatch({ type: "reset" });
-  }, []);
-
-  const startEdit = useCallback((user: ServiceUser) => {
-    dispatch({ type: "startEdit", payload: user });
-  }, []);
-
-  const toggleWeekday = (day: Weekday) => {
-    dispatch({ type: "toggleWeekday", payload: day });
-  };
-
-  const updateTime = (
-    day: Weekday,
-    field: "pickup" | "dropoff",
-    value: string | null,
-  ) => {
-    dispatch({ type: "updateTime", payload: { day, field, value } });
-  };
-
-  const scheduledDays = useMemo(
-    () => WEEKDAY_DISPLAY_ORDER.filter((day) => form.draft[`${day}`]),
-    [form.draft],
+  useFocusEffect(
+    useCallback(() => {
+      loadUsers();
+    }, [loadUsers]),
   );
 
-  const handleSubmit = useCallback(async () => {
-    if (!form.name.trim()) {
-      Alert.alert("エラー", "利用者名を入力してください");
-      return;
-    }
+  const openCreateForm = () => {
+    router.push("/user-form");
+  };
 
-    try {
-      setSubmitting(true);
-      if (form.editingUser) {
-        await updateServiceUser(
-          form.editingUser.id,
-          form.name.trim(),
-          form.lineId.trim(),
-          form.draft,
-          form.notifyMinutes,
-        );
-      } else {
-        await createServiceUser(
-          form.name.trim(),
-          form.lineId.trim(),
-          form.draft,
-          form.notifyMinutes,
-        );
-      }
-      resetForm();
-      await loadUsers();
-    } catch (error) {
-      showErrorAlert(error);
-    } finally {
-      setSubmitting(false);
-    }
-  }, [form, resetForm, loadUsers]);
+  const openEditForm = (user: ServiceUser) => {
+    router.push({
+      pathname: "/user-form",
+      params: {
+        id: user.id,
+        name: user.user_name,
+        lineId: user.line_user_id,
+        notifyMinutes: String(user.notify_minutes),
+        schedule: JSON.stringify(user.schedule),
+      },
+    });
+  };
 
   const handleDelete = (user: ServiceUser) => {
     Alert.alert("削除確認", `${user.user_name}さんを削除しますか？`, [
@@ -147,7 +78,6 @@ export default function UsersScreen() {
         onPress: async () => {
           try {
             await deleteServiceUser(user.id);
-            if (form.editingUser?.id === user.id) resetForm();
             await loadUsers();
           } catch (error) {
             showErrorAlert(error);
@@ -159,106 +89,27 @@ export default function UsersScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+      <View style={styles.body}>
         <FlatList
           data={filteredUsers}
           keyExtractor={(item) => String(item.id)}
           ListHeaderComponent={
             <View>
-              <Text style={styles.title}>利用者管理</Text>
-              <Text style={styles.countText}>登録利用者 {users.length}名</Text>
-
-              <View style={styles.form}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="利用者名"
-                  value={form.name}
-                  onChangeText={(v) =>
-                    dispatch({ type: "setName", payload: v })
-                  }
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="LINE ID（任意）"
-                  value={form.lineId}
-                  onChangeText={(v) =>
-                    dispatch({ type: "setLineId", payload: v })
-                  }
-                />
-
-                <Text style={styles.fieldLabel}>到着前通知のタイミング</Text>
-                <SelectableButtonRow
-                  options={NOTIFY_MINUTES_OPTIONS}
-                  isSelected={(min) => form.notifyMinutes === min}
-                  onSelect={(min) =>
-                    dispatch({ type: "setNotifyMinutes", payload: min })
-                  }
-                  style={styles.weekdayRow}
-                />
-
-                <Text style={styles.fieldLabel}>通所曜日（タップで選択）</Text>
-                <SelectableButtonRow
-                  options={WEEKDAY_OPTIONS}
-                  isSelected={(day) => Boolean(form.draft[`${day}`])}
-                  onSelect={toggleWeekday}
-                  style={styles.weekdayRow}
-                />
-
-                {scheduledDays.map((day) => {
-                  const entry = form.draft[`${day}`]!;
-                  return (
-                    <View key={day} style={styles.dayTimeRow}>
-                      <Text style={styles.dayLabel}>{WEEKDAY_LABELS[day]}</Text>
-                      <View style={styles.timeField}>
-                        <TimePickerField
-                          value={entry.pickup}
-                          onChange={(v) => updateTime(day, "pickup", v)}
-                          placeholder="お迎え"
-                        />
-                      </View>
-                      <View style={styles.timeField}>
-                        <TimePickerField
-                          value={entry.dropoff}
-                          onChange={(v) => updateTime(day, "dropoff", v)}
-                          placeholder="お送り"
-                        />
-                      </View>
-                    </View>
-                  );
-                })}
-
-                <View style={styles.formButtons}>
-                  <TouchableOpacity
-                    style={[
-                      styles.submitButton,
-                      submitting && styles.disabledButton,
-                    ]}
-                    onPress={handleSubmit}
-                    disabled={submitting}
-                  >
-                    {submitting ? (
-                      <ActivityIndicator color={colors.white} />
-                    ) : (
-                      <Text style={styles.submitButtonText}>
-                        {form.editingUser ? "更新" : "追加"}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  {form.editingUser && (
-                    <TouchableOpacity
-                      style={styles.cancelButton}
-                      onPress={resetForm}
-                    >
-                      <Text style={styles.cancelButtonText}>キャンセル</Text>
-                    </TouchableOpacity>
-                  )}
+              <View style={styles.headerRow}>
+                <View>
+                  <Text style={styles.title}>利用者管理</Text>
+                  <Text style={styles.countText}>
+                    登録利用者 {users.length}名
+                  </Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={openCreateForm}
+                >
+                  <Text style={styles.addButtonText}>+ 追加</Text>
+                </TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionTitle}>利用者一覧</Text>
               <TextInput
                 style={styles.searchInput}
                 placeholder="利用者名で検索"
@@ -298,7 +149,7 @@ export default function UsersScreen() {
                   )}
                 </View>
                 <View style={styles.userActions}>
-                  <TouchableOpacity onPress={() => startEdit(item)}>
+                  <TouchableOpacity onPress={() => openEditForm(item)}>
                     <Text style={styles.editText}>編集</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(item)}>
@@ -313,7 +164,7 @@ export default function UsersScreen() {
               <Text style={styles.emptyText}>
                 {searchText
                   ? "検索条件に一致する利用者がいません。"
-                  : `利用者が登録されていません。${"\n"}上のフォームから追加してください。`}
+                  : `利用者が登録されていません。${"\n"}右上の「+ 追加」から登録してください。`}
               </Text>
             )
           }
@@ -321,7 +172,7 @@ export default function UsersScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         />
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -331,9 +182,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
   },
-  keyboardView: {
+  body: {
     flex: 1,
     padding: 24,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
@@ -343,81 +200,21 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginBottom: 24,
   },
-  form: {
-    marginBottom: 24,
+  addButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
-  sectionTitle: {
-    fontSize: 16,
+  addButtonText: {
+    color: colors.white,
+    fontSize: 15,
     fontWeight: "700",
-    color: colors.textDark,
-    marginBottom: 8,
   },
   searchInput: {
     ...inputStyle,
     marginBottom: 16,
-  },
-  input: {
-    ...inputStyle,
-    marginBottom: 8,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 8,
-    marginBottom: 6,
-    fontWeight: "600",
-  },
-  weekdayRow: {
-    marginBottom: 8,
-  },
-  dayTimeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
-  },
-  dayLabel: {
-    width: 28,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.textDark,
-    textAlign: "center",
-  },
-  timeField: {
-    flex: 1,
-  },
-  formButtons: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 12,
-  },
-  submitButton: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  cancelButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: colors.textSecondary,
   },
   loader: {
     marginTop: 32,
