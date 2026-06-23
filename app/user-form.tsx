@@ -75,6 +75,7 @@ export default function UserFormScreen() {
         invite_code: "",
         schedule,
         notify_minutes: notifyMinutes,
+        canceled_today: false,
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

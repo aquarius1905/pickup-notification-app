@@ -25,6 +25,7 @@ export type ServiceUser = {
   invite_code: string;
   schedule: Schedule;
   notify_minutes: 5 | 10;
+  canceled_today: boolean;
 };
 
 export type Facility = {

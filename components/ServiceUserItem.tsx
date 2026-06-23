@@ -13,6 +13,7 @@ type Props = {
   notifyMinutes?: 5 | 10;
   schedule?: string;
   lineLinked: boolean;
+  canceledToday: boolean;
 };
 
 function getBadgeLabel(phase: NotifyPhase): string {
@@ -44,26 +45,30 @@ function ServiceUserItemBase({
   notifyMinutes,
   schedule,
   lineLinked,
+  canceledToday,
 }: Props) {
   return (
     <TouchableOpacity
       style={[styles.item, selected && styles.selectedItem]}
       onPress={() => onSelect(id)}
     >
-      <View style={styles.nameRow}>
-        <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
-        <View style={styles.badgeRow}>
-          {!lineLinked && (
-            <View style={[styles.minutesBadge, styles.unlinkedBadge]}>
-              <Text style={styles.minutesBadgeText}>LINE未連携</Text>
-            </View>
-          )}
-          {notifyMinutes && (
-            <View style={styles.minutesBadge}>
-              <Text style={styles.minutesBadgeText}>{notifyMinutes}分前通知</Text>
-            </View>
-          )}
-        </View>
+      <Text style={[styles.name, selected && styles.selectedName]}>{name}</Text>
+      <View style={styles.badgeRow}>
+        {canceledToday && (
+          <View style={[styles.minutesBadge, styles.canceledBadge]}>
+            <Text style={styles.minutesBadgeText}>本日キャンセル</Text>
+          </View>
+        )}
+        {!lineLinked && (
+          <View style={[styles.minutesBadge, styles.unlinkedBadge]}>
+            <Text style={styles.minutesBadgeText}>LINE未連携</Text>
+          </View>
+        )}
+        {notifyMinutes && (
+          <View style={styles.minutesBadge}>
+            <Text style={styles.minutesBadgeText}>{notifyMinutes}分前通知</Text>
+          </View>
+        )}
       </View>
       {schedule ? <Text style={styles.schedule}>{schedule}</Text> : null}
       {notifyPhase && (
@@ -101,14 +106,11 @@ const styles = StyleSheet.create({
     color: colors.textMid,
     marginTop: 4,
   },
-  nameRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
   badgeRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
+    marginTop: 6,
   },
   minutesBadge: {
     backgroundColor: colors.textSecondary,
@@ -118,6 +120,9 @@ const styles = StyleSheet.create({
   },
   unlinkedBadge: {
     backgroundColor: colors.warning,
+  },
+  canceledBadge: {
+    backgroundColor: colors.danger,
   },
   minutesBadgeText: {
     fontSize: 13,

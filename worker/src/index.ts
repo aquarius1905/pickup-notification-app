@@ -189,19 +189,38 @@ async function checkSupabaseResult<T>(res: Response, notFoundError: string): Pro
 }
 
 async function handleList(facilityId: string, env: Env, headers: SupabaseHeaders): Promise<Response> {
+  const today = getTodayDateJST();
   const res = await supabaseFetch(
     env,
-    `families?facility_id=eq.${facilityId}&is_active=eq.true&select=id,user_name,line_user_id,invite_code,schedule,notify_minutes&order=user_name.asc`,
+    `families?facility_id=eq.${facilityId}&is_active=eq.true` +
+      `&select=id,user_name,line_user_id,invite_code,schedule,notify_minutes,cancellations(date)` +
+      `&cancellations.date=eq.${today}&order=user_name.asc`,
     { method: 'GET', headers }
   );
   if (!res.ok) return supabaseErrorResponse(res);
 
-  const users = await res.json();
+  const rows = (await res.json()) as (FamilyRecord & { cancellations: { date: string }[] })[];
+  const users = rows.map(({ cancellations, ...rest }) => ({
+    ...rest,
+    canceled_today: cancellations.length > 0,
+  }));
   return jsonResponse({ ok: true, users });
 }
 
 const LOGS_PAGE_SIZE = 20;
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/** 今日の日付（JST基準）を YYYY-MM-DD 形式で返す */
+function getTodayDateJST(): string {
+  const nowJst = new Date(Date.now() + JST_OFFSET_MS);
+  return nowJst.toISOString().slice(0, 10);
+}
+
+const CANCEL_KEYWORDS = ['キャンセル', '休み', '欠席', '利用しません', '送迎不要'];
+
+function isCancelMessage(text: string): boolean {
+  return CANCEL_KEYWORDS.some((keyword) => text.includes(keyword));
+}
 
 /** "today"/"week"の絞り込み開始時刻（JST基準）をUTC ISO文字列で返す。"all"等はnull */
 function getPeriodCutoff(period: unknown): string | null {
@@ -505,12 +524,52 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
         env
       );
     } else if (event.type === 'message' && event.message?.type === 'text') {
-      const text = event.message.text.trim().toUpperCase();
+      const rawText = event.message.text.trim();
       const lineUserId = event.source?.userId;
 
       if (!lineUserId) continue;
 
-      // 招待コードで利用者を検索
+      // 連携済みの利用者かどうか確認
+      const linkedRes = await supabaseFetch(
+        env,
+        `families?line_user_id=eq.${encodeURIComponent(lineUserId)}&is_active=eq.true&select=id,user_name&limit=1`,
+        { method: 'GET', headers }
+      );
+      const linkedUsers = (await linkedRes.json()) as unknown;
+
+      if (Array.isArray(linkedUsers) && linkedUsers.length > 0) {
+        const user = linkedUsers[0] as { id: string; user_name: string };
+
+        if (isCancelMessage(rawText)) {
+          const cancelRes = await supabaseFetch(
+            env,
+            'cancellations?on_conflict=family_id,date',
+            {
+              method: 'POST',
+              headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
+              body: JSON.stringify({ family_id: user.id, date: getTodayDateJST() }),
+            }
+          );
+
+          await replyLineMessage(
+            event.replyToken,
+            cancelRes.ok
+              ? `${user.user_name}さんの本日のキャンセルを承りました。\n施設に申し送りいたします。`
+              : 'キャンセルの受付に失敗しました。施設にお問い合わせください。',
+            env
+          );
+        } else {
+          await replyLineMessage(
+            event.replyToken,
+            '「キャンセル」と送信すると、本日の送迎キャンセルを施設にお伝えできます。',
+            env
+          );
+        }
+        continue;
+      }
+
+      // 招待コードで利用者を検索（未連携の場合）
+      const text = rawText.toUpperCase();
       const familyRes = await supabaseFetch(
         env,
         `families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,user_name`,
@@ -543,7 +602,7 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
       if (updateRes.ok) {
         await replyLineMessage(
           event.replyToken,
-          `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。`,
+          `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。\n当日お休みする場合は「キャンセル」と送信してください。`,
           env
         );
       } else {

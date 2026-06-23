@@ -88,6 +88,7 @@ export default function HomeScreen() {
   );
   const selectedUserMinutes = selectedUserData?.notify_minutes ?? 10;
   const selectedUserLinked = Boolean(selectedUserData?.line_user_id);
+  const isCanceledToday = Boolean(selectedUserData?.canceled_today);
 
   const handleSelectUser = useCallback(
     (id: string) => {
@@ -142,6 +143,7 @@ export default function HomeScreen() {
             notifyMinutes={user.notify_minutes}
             schedule={formatDayTime(getDaySchedule(user, today))}
             lineLinked={Boolean(user.line_user_id)}
+            canceledToday={user.canceled_today}
           />
         )}
         style={styles.list}
@@ -157,7 +159,7 @@ export default function HomeScreen() {
         }
       />
 
-      {selectedUser && !isDone && (
+      {selectedUser && !isDone && !isCanceledToday && (
         <View style={styles.buttonRow}>
           {isApproaching ? (
             <NotifyButton
