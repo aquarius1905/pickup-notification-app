@@ -76,3 +76,4 @@ LINE_TOKEN=xxxx LINE_LIFF_ID=yyyy npm run setup-rich-menu
 - **UIの調整**
 - **通知文面のカスタマイズ**: 施設ごとに通知メッセージを変更できるようにする。
 - **`schedule` の持ち方の見直し**: 現状JSONカラムにWeekday単位で格納しているが、拡張性・検索性の観点から別テーブルへの正規化などを検討する。
+- **事前キャンセルの理由（`cancel_reasons`）の持ち方の見直し**: 現状 `worker/src/cancelForm.ts` で `'hospital'/'other'` という英語キーを `CANCEL_REASONS` で日本語ラベルに変換しているが、DBの `cancellations.reason` には変換後の日本語テキストがそのまま保存され、英語キーは他の場所で使われていない。`'通院'/'その他'` を値として直接使う形に簡略化できる可能性があるが、未対応。
