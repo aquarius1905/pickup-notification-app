@@ -11,7 +11,7 @@ const CANCEL_REASONS: Record<string, string> = {
 const CANCEL_DETAIL_MAX_LENGTH = 100;
 
 function isValidCancelReason(value: unknown): value is keyof typeof CANCEL_REASONS {
-  return typeof value === 'string' && value in CANCEL_REASONS;
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(CANCEL_REASONS, value);
 }
 
 function isValidFutureDate(date: string): boolean {
