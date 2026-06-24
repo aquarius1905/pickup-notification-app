@@ -1,11 +1,15 @@
-interface Env {
+import { handleCancelFormPage, handleCancelFormSubmit } from './cancelForm';
+
+export interface Env {
   SUPABASE_URL: string;
   SUPABASE_API_KEY: string;
   LINE_TOKEN: string;
   LINE_CHANNEL_SECRET: string;
+  LINE_LIFF_ID: string;
+  LINE_CHANNEL_ID: string;
 }
 
-type SupabaseHeaders = Record<string, string>;
+export type SupabaseHeaders = Record<string, string>;
 
 type DaySchedule = { pickup: string | null; dropoff: string | null };
 type Schedule = Record<string, DaySchedule>;
@@ -39,11 +43,25 @@ type RequestBody = {
 
 export default {
   async fetch(request, env): Promise<Response> {
-    if (request.method !== 'POST') {
+    const url = new URL(request.url);
+
+    // 事前キャンセルフォーム（LIFF）：GETでフォーム画面、POSTで送信
+    if (url.pathname === '/cancel-form') {
+      if (request.method === 'GET') return handleCancelFormPage(env);
+      if (request.method === 'POST') {
+        const supabaseHeaders: SupabaseHeaders = {
+          apikey: env.SUPABASE_API_KEY,
+          Authorization: `Bearer ${env.SUPABASE_API_KEY}`,
+          'Content-Type': 'application/json',
+        };
+        return handleCancelFormSubmit(request, env, supabaseHeaders);
+      }
       return new Response('Method Not Allowed', { status: 405 });
     }
 
-    const url = new URL(request.url);
+    if (request.method !== 'POST') {
+      return new Response('Method Not Allowed', { status: 405 });
+    }
 
     const supabaseHeaders: SupabaseHeaders = {
       apikey: env.SUPABASE_API_KEY,
@@ -91,14 +109,14 @@ export default {
 
 // --- ヘルパー ---
 
-function jsonResponse(data: unknown, status = 200): Response {
+export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
 }
 
-function supabaseFetch(env: Env, path: string, init: RequestInit): Promise<Response> {
+export function supabaseFetch(env: Env, path: string, init: RequestInit): Promise<Response> {
   return fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, init);
 }
 
@@ -211,7 +229,7 @@ const LOGS_PAGE_SIZE = 20;
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 /** 今日の日付（JST基準）を YYYY-MM-DD 形式で返す */
-function getTodayDateJST(): string {
+export function getTodayDateJST(): string {
   const nowJst = new Date(Date.now() + JST_OFFSET_MS);
   return nowJst.toISOString().slice(0, 10);
 }
@@ -602,7 +620,7 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
       if (updateRes.ok) {
         await replyLineMessage(
           event.replyToken,
-          `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。\n当日お休みする場合は「キャンセル」と送信してください。`,
+          `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。\n当日お休みする場合は「キャンセル」と送信してください。\n事前にお休みがわかっている場合は、下のメニューの「事前キャンセル」からお知らせいただけます。`,
           env
         );
       } else {
@@ -613,3 +631,4 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
 
   return new Response('OK', { status: 200 });
 }
+
