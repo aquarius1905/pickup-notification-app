@@ -186,6 +186,10 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
   }
   const user = linkedUsers[0] as { id: string; user_name: string };
 
+  if (!user.user_name?.trim()) {
+    return jsonResponse({ ok: false, error: '利用者情報が正しくありません。施設にお問い合わせください。' }, 500);
+  }
+
   const cancelRes = await supabaseFetch(env, 'cancellations?on_conflict=family_id,date', {
     method: 'POST',
     headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
