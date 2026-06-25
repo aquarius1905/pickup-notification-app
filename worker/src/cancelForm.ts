@@ -1,5 +1,5 @@
 import type { Env, SupabaseHeaders } from './index';
-import { getTodayDateJST, jsonResponse, supabaseFetch } from './index';
+import { getTodayDateJST, jsonResponse, supabaseFetch, writeLog } from './index';
 
 // --- 事前キャンセルフォーム（LIFF） ---
 
@@ -196,7 +196,8 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
     return jsonResponse({ ok: false, error: 'キャンセルの受付に失敗しました。施設にお問い合わせください。' }, 500);
   }
 
-  await fetch('https://api.line.me/v2/bot/message/push', {
+  const noticeMessage = `${user.user_name}さんの${formatDateJa(date)}のキャンセル（理由：${finalReason}）を承りました。\n施設に申し送りいたします。`;
+  const pushRes = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env.LINE_TOKEN}`,
@@ -204,14 +205,19 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
     },
     body: JSON.stringify({
       to: verifiedUserId,
-      messages: [
-        {
-          type: 'text',
-          text: `${user.user_name}さんの${formatDateJa(date)}のキャンセル（理由：${finalReason}）を承りました。\n施設に申し送りいたします。`,
-        },
-      ],
+      messages: [{ type: 'text', text: noticeMessage }],
     }),
   });
+
+  if (!pushRes.ok) {
+    await writeLog(env, headers, {
+      family_id: user.id,
+      event_type: 'cancel_form_notice',
+      message: noticeMessage,
+      success: false,
+      error_message: await pushRes.text(),
+    });
+  }
 
   return jsonResponse({ ok: true });
 }

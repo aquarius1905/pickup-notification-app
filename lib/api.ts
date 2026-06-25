@@ -33,6 +33,13 @@ export type Facility = {
   name: string;
 };
 
+export type UpcomingCancellation = {
+  id: string;
+  date: string;
+  reason: string | null;
+  family: { user_name: string } | null;
+};
+
 export type NotificationLog = {
   id: string;
   event_type: "pickup_approaching" | "dropoff_approaching";
@@ -63,6 +70,7 @@ type WorkerResponse = {
   facility?: Facility;
   logs?: NotificationLog[];
   hasMore?: boolean;
+  cancellations?: UpcomingCancellation[];
 };
 
 /** @throws 通信失敗時・okがfalseの時にErrorを投げる */
@@ -89,6 +97,15 @@ async function callWorker(
 export async function fetchServiceUsers(): Promise<ServiceUser[]> {
   const data = await callWorker("list", {}, "利用者一覧の取得に失敗しました");
   return data.users ?? [];
+}
+
+export async function fetchUpcomingCancellations(): Promise<UpcomingCancellation[]> {
+  const data = await callWorker(
+    "listCancellations",
+    {},
+    "キャンセル予定の取得に失敗しました",
+  );
+  return data.cancellations ?? [];
 }
 
 export async function sendApproachingNotification(

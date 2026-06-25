@@ -92,6 +92,7 @@ export default {
       const facilityId = facility.id;
 
       if (action === 'list') return handleList(facilityId, env, supabaseHeaders);
+      if (action === 'listCancellations') return handleListCancellations(facilityId, env, supabaseHeaders);
       if (action === 'listLogs') return handleListLogs(body, facilityId, env, supabaseHeaders);
       if (action === 'notify') return handleNotify(body, facilityId, env, supabaseHeaders);
       if (action === 'create') return handleCreate(body, facilityId, env, supabaseHeaders);
@@ -125,7 +126,7 @@ async function supabaseErrorResponse(res: Response): Promise<Response> {
   return jsonResponse({ ok: false, error }, res.status);
 }
 
-type LogEntry = {
+export type LogEntry = {
   family_id: string;
   event_type: string;
   message: string;
@@ -133,7 +134,7 @@ type LogEntry = {
   error_message: string | null;
 };
 
-async function writeLog(env: Env, headers: SupabaseHeaders, entry: LogEntry): Promise<void> {
+export async function writeLog(env: Env, headers: SupabaseHeaders, entry: LogEntry): Promise<void> {
   await supabaseFetch(env, 'logs', {
     method: 'POST',
     headers: { ...headers, Prefer: 'return=minimal' },
@@ -223,6 +224,30 @@ async function handleList(facilityId: string, env: Env, headers: SupabaseHeaders
     canceled_today: cancellations.length > 0,
   }));
   return jsonResponse({ ok: true, users });
+}
+
+type UpcomingCancellation = {
+  id: string;
+  date: string;
+  reason: string | null;
+  family: { user_name: string } | null;
+};
+
+/** 今日以降の未処理キャンセル（当日分・事前分とも）を日付の早い順に返す */
+async function handleListCancellations(facilityId: string, env: Env, headers: SupabaseHeaders): Promise<Response> {
+  const today = getTodayDateJST();
+  const res = await supabaseFetch(
+    env,
+    `cancellations?date=gte.${today}` +
+      `&select=id,date,reason,family:families!inner(user_name)` +
+      `&family.facility_id=eq.${facilityId}&family.is_active=eq.true` +
+      `&order=date.asc`,
+    { method: 'GET', headers }
+  );
+  if (!res.ok) return supabaseErrorResponse(res);
+
+  const cancellations = (await res.json()) as UpcomingCancellation[];
+  return jsonResponse({ ok: true, cancellations });
 }
 
 const LOGS_PAGE_SIZE = 20;
