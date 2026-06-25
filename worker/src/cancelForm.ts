@@ -152,7 +152,12 @@ async function verifyLiffIdToken(idToken: string, env: Env): Promise<string | nu
 }
 
 export async function handleCancelFormSubmit(request: Request, env: Env, headers: SupabaseHeaders): Promise<Response> {
-  const body = (await request.json()) as CancelFormBody;
+  let body: CancelFormBody;
+  try {
+    body = (await request.json()) as CancelFormBody;
+  } catch {
+    return jsonResponse({ ok: false, error: 'リクエストの形式が正しくありません。' }, 400);
+  }
   const { idToken, date, reason, detail } = body;
 
   if (!idToken) {
