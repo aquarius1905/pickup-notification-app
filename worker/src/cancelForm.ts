@@ -185,6 +185,9 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
     `families?line_user_id=eq.${encodeURIComponent(verifiedUserId)}&is_active=eq.true&select=id,user_name&limit=1`,
     { method: 'GET', headers }
   );
+  if (!linkedRes.ok) {
+    return jsonResponse({ ok: false, error: 'システムエラーが発生しました。しばらくしてからお試しください。' }, 500);
+  }
   const linkedUsers = (await linkedRes.json()) as unknown;
   if (!Array.isArray(linkedUsers) || linkedUsers.length === 0) {
     return jsonResponse({ ok: false, error: '利用者が見つかりません。施設にお問い合わせください。' }, 404);
