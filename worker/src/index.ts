@@ -260,6 +260,7 @@ export function getTodayDateJST(): string {
 }
 
 const CANCEL_KEYWORDS = ['キャンセル', '休み', '欠席', '利用しません', '送迎不要'];
+const CANCEL_MESSAGE_REASON_MAX_LENGTH = 100;
 
 function isCancelMessage(text: string): boolean {
   return CANCEL_KEYWORDS.some((keyword) => text.includes(keyword));
@@ -590,7 +591,11 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
             {
               method: 'POST',
               headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
-              body: JSON.stringify({ family_id: user.id, date: getTodayDateJST() }),
+              body: JSON.stringify({
+                family_id: user.id,
+                date: getTodayDateJST(),
+                reason: rawText.slice(0, CANCEL_MESSAGE_REASON_MAX_LENGTH),
+              }),
             }
           );
 
