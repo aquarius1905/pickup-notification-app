@@ -14,9 +14,15 @@ function isValidCancelReason(value: unknown): value is keyof typeof CANCEL_REASO
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(CANCEL_REASONS, value);
 }
 
+/** 翌日の日付（JST基準）を YYYY-MM-DD 形式で返す */
+function getTomorrowDateJST(): string {
+  const [year, month, day] = getTodayDateJST().split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+}
+
 function isValidFutureDate(date: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  return date >= getTodayDateJST();
+  return date > getTodayDateJST();
 }
 
 const WEEKDAY_LABELS_JA = ['日', '月', '火', '水', '木', '金', '土'];
@@ -29,7 +35,7 @@ function formatDateJa(date: string): string {
 }
 
 export function handleCancelFormPage(env: Env): Response {
-  const today = getTodayDateJST();
+  const tomorrow = getTomorrowDateJST();
   const reasonButtons = Object.entries(CANCEL_REASONS)
     .map(([value, label]) => `<button type="button" class="reason-btn" data-value="${value}">${label}</button>`)
     .join('\n      ');
@@ -57,7 +63,7 @@ export function handleCancelFormPage(env: Env): Response {
 <body>
   <h1>事前キャンセルのご連絡</h1>
   <label for="date">お休みする日</label>
-  <input type="date" id="date" min="${today}">
+  <input type="date" id="date" min="${tomorrow}">
   <label>理由</label>
   <div class="reasons" id="reasons">
       ${reasonButtons}
