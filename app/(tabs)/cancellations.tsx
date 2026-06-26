@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { UpcomingCancellation } from "@/lib/api";
 import { useUpcomingCancellations } from "@/hooks/useUpcomingCancellations";
+import { getTodayString } from "@/lib/schedule";
 import { colors } from "@/lib/theme";
 
 function formatCancellationDate(date: string): string {
@@ -21,9 +22,7 @@ function formatCancellationDate(date: string): string {
 }
 
 function isToday(date: string): boolean {
-  const today = new Date();
-  const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  return date === todayString;
+  return date === getTodayString();
 }
 
 export default function CancellationsScreen() {

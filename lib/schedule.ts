@@ -29,6 +29,11 @@ export function getCurrentWeekday(): Weekday {
   return new Date().getDay() as Weekday;
 }
 
+export function getTodayString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${padZero(d.getMonth() + 1)}-${padZero(d.getDate())}`;
+}
+
 export function getDaySchedule(
   user: ServiceUser,
   day: Weekday,

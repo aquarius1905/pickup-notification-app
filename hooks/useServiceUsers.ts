@@ -7,6 +7,7 @@ import type { ServiceUser } from "@/lib/api";
 import { fetchServiceUsers, sendApproachingNotification } from "@/lib/api";
 import { getErrorMessage, showErrorAlert } from "@/lib/error";
 import { withAsyncLoading } from "@/lib/asyncLoad";
+import { getTodayString } from "@/lib/schedule";
 
 export type NotifyPhase =
   | "pickup_approaching"
@@ -18,11 +19,6 @@ export type NotifyEntry = { phase: NotifyPhase; date: string; minutes?: 5 | 10 }
 export type NotifyStatus = Record<string, NotifyEntry>;
 
 const STORAGE_KEY = "notifyStatus_v3";
-
-function getTodayString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 async function loadNotifyStatus(): Promise<NotifyStatus> {
   try {
