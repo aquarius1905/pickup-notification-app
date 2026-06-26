@@ -47,6 +47,7 @@ export type NotificationLog = {
   success: boolean;
   error_message: string | null;
   created_at: string;
+  notify_minutes: number | null;
   family: { user_name: string } | null;
 };
 

@@ -42,12 +42,11 @@ function getEventLabel(eventType: NotificationLog["event_type"]): string {
 /** イベント種別と通知文の「あと◯分」を1行にまとめる（例: お送り通知（10分前・電話）） */
 function formatEventSummary(log: NotificationLog): string {
   const label = getEventLabel(log.event_type);
-  const minutesMatch = log.message.match(/あと(\d+)分で到着します/);
-  if (!minutesMatch) return label;
+  if (log.notify_minutes == null) return label;
   const isPhone = log.message.includes("電話連絡");
   return isPhone
-    ? `${label}（${minutesMatch[1]}分前・電話）`
-    : `${label}（${minutesMatch[1]}分前）`;
+    ? `${label}（${log.notify_minutes}分前・電話）`
+    : `${label}（${log.notify_minutes}分前）`;
 }
 
 const KNOWN_ERROR_PATTERNS: { test: RegExp; message: string }[] = [

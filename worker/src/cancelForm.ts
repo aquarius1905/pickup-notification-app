@@ -234,6 +234,7 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
       message: noticeMessage,
       success: false,
       error_message: await pushRes.text(),
+      notify_minutes: null,
     });
   }
 

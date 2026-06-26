@@ -132,6 +132,7 @@ export type LogEntry = {
   message: string;
   success: boolean;
   error_message: string | null;
+  notify_minutes: number | null;
 };
 
 export async function writeLog(env: Env, headers: SupabaseHeaders, entry: LogEntry): Promise<void> {
@@ -294,7 +295,7 @@ async function handleListLogs(body: RequestBody, facilityId: string, env: Env, h
       : null;
 
   let query =
-    `logs?select=id,event_type,message,success,error_message,created_at,family:families!inner(user_name)` +
+    `logs?select=id,event_type,message,success,error_message,created_at,notify_minutes,family:families!inner(user_name)` +
     `&family.facility_id=eq.${facilityId}`;
   if (search) {
     query += `&family.user_name=ilike.*${encodeURIComponent(search)}*`;
@@ -351,6 +352,7 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
       message: `（電話連絡）${message}`,
       success: true,
       error_message: null,
+      notify_minutes: user.notify_minutes ?? 10,
     });
 
     return jsonResponse({ ok: true, messageSent: message, lineBody: null });
@@ -376,6 +378,7 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
     message,
     success: lineRes.ok,
     error_message: lineRes.ok ? null : lineResultText,
+    notify_minutes: user.notify_minutes ?? 10,
   });
 
   return jsonResponse({
