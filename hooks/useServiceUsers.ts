@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Burnt from "burnt";
@@ -6,7 +6,6 @@ import * as Haptics from "expo-haptics";
 import type { ServiceUser } from "@/lib/api";
 import { fetchServiceUsers, sendApproachingNotification } from "@/lib/api";
 import { getErrorMessage, showErrorAlert } from "@/lib/error";
-import { withAsyncLoading } from "@/lib/asyncLoad";
 import { getTodayString } from "@/lib/schedule";
 
 export type NotifyPhase =
@@ -50,18 +49,27 @@ export function useServiceUsers() {
   const [refreshing, setRefreshing] = useState(false);
   const [notified, setNotified] = useState<NotifyStatus>({});
 
+  // 連続更新時に古いリクエストの結果が新しいリクエストの結果を上書きしないようにするための世代カウンタ
+  const requestIdRef = useRef(0);
+
   useEffect(() => {
     loadNotifyStatus().then(setNotified);
   }, []);
 
   const load = useCallback(
     async (setLoadingFlag: (v: boolean) => void) => {
-      const data = await withAsyncLoading(
-        () => fetchServiceUsers(),
-        setLoadingFlag,
-        showErrorAlert,
-      );
-      if (data) setUsers(data);
+      const requestId = ++requestIdRef.current;
+      setLoadingFlag(true);
+      try {
+        const data = await fetchServiceUsers();
+        if (requestId !== requestIdRef.current) return;
+        setUsers(data);
+      } catch (error) {
+        if (requestId !== requestIdRef.current) return;
+        showErrorAlert(error);
+      } finally {
+        if (requestId === requestIdRef.current) setLoadingFlag(false);
+      }
     },
     [],
   );
