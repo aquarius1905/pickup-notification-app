@@ -44,6 +44,15 @@ type Params = {
   schedule?: string;
 };
 
+function parseScheduleParam(raw: string | undefined): Schedule {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Schedule;
+  } catch {
+    return {};
+  }
+}
+
 export default function UserFormScreen() {
   const params = useLocalSearchParams<Params>();
   const router = useRouter();
@@ -60,9 +69,7 @@ export default function UserFormScreen() {
 
   useEffect(() => {
     if (!params.id) return;
-    const schedule: Schedule = params.schedule
-      ? JSON.parse(params.schedule)
-      : {};
+    const schedule = parseScheduleParam(params.schedule);
     const notifyMinutes = (Number(params.notifyMinutes) === 5 ? 5 : 10) as
       | 5
       | 10;
