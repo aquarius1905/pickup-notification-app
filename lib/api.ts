@@ -85,12 +85,21 @@ async function callWorker(
     headers: defaultHeaders,
     body: JSON.stringify({ action, ...params }),
   });
-  const data: WorkerResponse = await response.json();
-  if (!response.ok) {
-    throw new HttpError(data.error ?? errorMessage, response.status);
+
+  // Cloudflareの基盤障害時などはWorkerのコードが実行されずHTMLが返ることがあるため、
+  // JSONパース失敗時は例外を投げずdata=nullとして後続のステータスチェックに委ねる
+  let data: WorkerResponse | null = null;
+  try {
+    data = await response.json();
+  } catch {
+    // ignore: 後続のresponse.okチェックでフォールバックのerrorMessageを使う
   }
-  if (!data.ok) {
-    throw new Error(data.error ?? errorMessage);
+
+  if (!response.ok) {
+    throw new HttpError(data?.error ?? errorMessage, response.status);
+  }
+  if (!data || !data.ok) {
+    throw new Error(data?.error ?? errorMessage);
   }
   return data;
 }
