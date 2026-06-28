@@ -14,7 +14,7 @@ export type NotifyPhase =
   | "dropoff_approaching"
   | "dropoff_completed";
 
-export type NotifyEntry = { phase: NotifyPhase; date: string; minutes?: 5 | 10 };
+export type NotifyEntry = { phase: NotifyPhase; date: string };
 export type NotifyStatus = Record<string, NotifyEntry>;
 
 const STORAGE_KEY = "notifyStatus_v3";
@@ -102,11 +102,11 @@ export function useServiceUsers() {
   }, []);
 
   const recordNotified = useCallback(
-    (targetUser: string, phase: NotifyPhase, minutes?: 5 | 10) => {
+    (targetUser: string, phase: NotifyPhase) => {
       setNotified((prev) => {
         const next = {
           ...prev,
-          [targetUser]: { phase, date: getTodayString(), minutes },
+          [targetUser]: { phase, date: getTodayString() },
         };
         saveNotifyStatus(next);
         return next;
@@ -157,7 +157,7 @@ export function useServiceUsers() {
               await sendApproachingNotification(targetId, nextPhase);
               setSelectedUser(null);
               Burnt.toast({ title: successToastTitle, preset: "done" });
-              recordNotified(targetId, nextPhase, minutes);
+              recordNotified(targetId, nextPhase);
             } catch (error) {
               await Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Error,
