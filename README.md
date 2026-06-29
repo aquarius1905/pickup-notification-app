@@ -68,12 +68,14 @@ LINE_TOKEN=xxxx LINE_LIFF_ID=yyyy npm run setup-rich-menu
 | 変数名 | 説明 |
 |--------|------|
 | `EXPO_PUBLIC_WORKER_URL` | Cloudflare WorkerのURL |
-| `EXPO_PUBLIC_API_KEY` | 施設のAPIキー |
+
+施設のAPIキー（64文字）はビルド時に埋め込まず、アプリ初回起動時のセットアップ画面で**施設コード**（短い人が読み書きできるコード）を入力することで取得し、端末内のAsyncStorageに保存する。これにより1つのビルドを全施設に配布できる。施設コードは「施設設定」タブで確認・コピーできる。端末の設定をやり直したい場合は同タブの「この端末の設定を解除」から再設定できる。
+
+施設コードからAPIキーを取得するエンドポイントはAPIキー認証なしで呼べるため、総当たり対策として接続元IPごとにレート制限している（`facility_code_lookup_attempts`テーブル、`worker/src/index.ts`の`handleResolveFacilityCode`）。
 
 ## 今後の課題
 
 - **EAS Buildで実機にインストールできるようにする**: 現状`eas.json`が無く、`app.json`にも`ios.bundleIdentifier`/`android.package`が未設定のため、`npx expo start`（Expo Go経由）でしか動作確認できない。内部テスト配布（TestFlightの内部テスト、Androidは直接APK配布）用のビルドを用意し、実機で日常運用できる状態にする。他の課題はこれが前提になる。
-- **施設設定の仕組みを見直す**: 現状APIキーをビルド時に環境変数で埋め込んでいるため施設ごとに別ビルドが必要。初回起動時のセットアップ画面でAPIキーを入力しAsyncStorageに保存する方式に変更し、1ビルドを全施設に配布できるようにする。
 - **UIの調整**
 - **通知文面のカスタマイズ**: 施設ごとに通知メッセージを変更できるようにする。
 - **`schedule` の持ち方の見直し**: 現状JSONカラムにWeekday単位で格納しているが、拡張性・検索性の観点から別テーブルへの正規化などを検討する。

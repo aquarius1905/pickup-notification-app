@@ -14,7 +14,7 @@ export type SupabaseHeaders = Record<string, string>;
 type DaySchedule = { pickup: string | null; dropoff: string | null };
 type Schedule = Record<string, DaySchedule>;
 
-type Facility = { id: string; name: string };
+type Facility = { id: string; name: string; facility_code: string };
 
 type FamilyRecord = {
   id: string;
@@ -39,6 +39,7 @@ type RequestBody = {
   period?: unknown;
   eventType?: unknown;
   offset?: unknown;
+  code?: unknown;
 };
 
 export default {
@@ -77,6 +78,11 @@ export default {
     try {
       const body = (await request.json()) as RequestBody;
       const { action } = body;
+
+      // 施設コードからAPIキーを取得する（職員のスマホ初回設定用。APIキー認証が不要な唯一のアクション）
+      if (action === 'resolveFacilityCode') {
+        return handleResolveFacilityCode(body, request, env, supabaseHeaders);
+      }
 
       // APIキー認証 → 施設を特定
       const apiKey = request.headers.get('x-api-key');
@@ -178,7 +184,7 @@ function generateInviteCode(): string {
 async function authenticateFacility(apiKey: string, env: Env, headers: SupabaseHeaders): Promise<Facility | null> {
   const res = await supabaseFetch(
     env,
-    `facilities?api_key=eq.${encodeURIComponent(apiKey)}&is_active=eq.true&select=id,name&limit=1`,
+    `facilities?api_key=eq.${encodeURIComponent(apiKey)}&is_active=eq.true&select=id,name,facility_code&limit=1`,
     { method: 'GET', headers }
   );
   const facilities = (await res.json()) as unknown;
@@ -188,10 +194,68 @@ async function authenticateFacility(apiKey: string, env: Env, headers: SupabaseH
   return facilities[0] as Facility;
 }
 
+const FACILITY_CODE_RATE_LIMIT = 20;
+const FACILITY_CODE_RATE_WINDOW_MINUTES = 10;
+
+/** 施設コードからAPIキーを取得する。短いコードは総当たりされやすいため、接続元IPごとに直近の試行回数を制限する */
+async function handleResolveFacilityCode(
+  body: RequestBody,
+  request: Request,
+  env: Env,
+  headers: SupabaseHeaders
+): Promise<Response> {
+  const code = typeof body.code === 'string' ? body.code.trim() : '';
+  if (!code) {
+    return jsonResponse({ ok: false, error: '施設コードを入力してください' }, 400);
+  }
+
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const windowStart = new Date(Date.now() - FACILITY_CODE_RATE_WINDOW_MINUTES * 60 * 1000).toISOString();
+
+  const recentRes = await supabaseFetch(
+    env,
+    `facility_code_lookup_attempts?ip=eq.${encodeURIComponent(ip)}` +
+      `&created_at=gte.${encodeURIComponent(windowStart)}&select=id&limit=${FACILITY_CODE_RATE_LIMIT}`,
+    { method: 'GET', headers }
+  );
+  const recentAttempts = (await recentRes.json()) as unknown;
+  const tooManyAttempts = Array.isArray(recentAttempts) && recentAttempts.length >= FACILITY_CODE_RATE_LIMIT;
+
+  // 成功・失敗にかかわらず、問い合わせがあったこと自体を記録する
+  await supabaseFetch(env, 'facility_code_lookup_attempts', {
+    method: 'POST',
+    headers: { ...headers, Prefer: 'return=minimal' },
+    body: JSON.stringify({ ip }),
+  });
+
+  if (tooManyAttempts) {
+    return jsonResponse(
+      { ok: false, error: '試行回数が多すぎます。しばらく時間をおいてから再度お試しください。' },
+      429
+    );
+  }
+
+  const res = await supabaseFetch(
+    env,
+    `facilities?facility_code=eq.${encodeURIComponent(code)}&is_active=eq.true&select=id,name,api_key&limit=1`,
+    { method: 'GET', headers }
+  );
+  const rows = (await res.json()) as { id: string; name: string; api_key: string }[];
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return jsonResponse({ ok: false, error: '施設コードが見つかりません' }, 404);
+  }
+
+  const { id, name, api_key } = rows[0];
+  return jsonResponse({ ok: true, apiKey: api_key, facility: { id, name } });
+}
+
 // --- アクションハンドラ ---
 
 function handleGetFacility(facility: Facility): Response {
-  return jsonResponse({ ok: true, facility: { id: facility.id, name: facility.name } });
+  return jsonResponse({
+    ok: true,
+    facility: { id: facility.id, name: facility.name, facility_code: facility.facility_code },
+  });
 }
 
 type SupabaseResult<T> = { err: Response; rows?: never } | { err?: never; rows: T[] };
@@ -498,7 +562,10 @@ async function handleUpdateFacility(body: RequestBody, facilityId: string, env: 
 
   const { err, rows } = await checkSupabaseResult<Facility>(res, '施設が見つかりません');
   if (err) return err;
-  return jsonResponse({ ok: true, facility: { id: rows[0].id, name: rows[0].name } });
+  return jsonResponse({
+    ok: true,
+    facility: { id: rows[0].id, name: rows[0].name, facility_code: rows[0].facility_code },
+  });
 }
 
 // --- LINE Webhook ---

@@ -1,12 +1,21 @@
 import { HttpError } from "./error";
 
 const WORKER_URL = process.env.EXPO_PUBLIC_WORKER_URL!;
-const API_KEY = process.env.EXPO_PUBLIC_API_KEY!;
 
-const defaultHeaders: HeadersInit = {
-  "Content-Type": "application/json",
-  "x-api-key": API_KEY,
-};
+// 施設ごとのAPIキーはビルド時に固定せず、起動時にAsyncStorageから読み込んでここに保持する
+// （永続化自体はlib/facilityAuth.tsが担当し、こちらはリクエスト用のメモリキャッシュ）
+let cachedApiKey: string | null = null;
+
+export function setApiKey(key: string | null): void {
+  cachedApiKey = key;
+}
+
+function getHeaders(): HeadersInit {
+  return {
+    "Content-Type": "application/json",
+    "x-api-key": cachedApiKey ?? "",
+  };
+}
 
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -31,6 +40,7 @@ export type ServiceUser = {
 export type Facility = {
   id: string;
   name: string;
+  facility_code: string;
 };
 
 export type UpcomingCancellation = {
@@ -72,6 +82,7 @@ type WorkerResponse = {
   logs?: NotificationLog[];
   hasMore?: boolean;
   cancellations?: UpcomingCancellation[];
+  apiKey?: string;
 };
 
 /** @throws 通信失敗時・okがfalseの時にErrorを投げる */
@@ -82,7 +93,7 @@ async function callWorker(
 ): Promise<WorkerResponse> {
   const response = await fetch(WORKER_URL, {
     method: "POST",
-    headers: defaultHeaders,
+    headers: getHeaders(),
     body: JSON.stringify({ action, ...params }),
   });
 
@@ -180,4 +191,19 @@ export async function updateFacilityName(name: string): Promise<Facility> {
   const data = await callWorker("updateFacility", { name }, "施設名の更新に失敗しました");
   if (!data.facility) throw new Error("施設名の更新に失敗しました");
   return data.facility;
+}
+
+/** 施設コードに対応するAPIキーを取得する。APIキー認証なしで呼べる唯一のアクション */
+export async function resolveFacilityCode(
+  code: string,
+): Promise<{ apiKey: string; facility: Facility }> {
+  const data = await callWorker(
+    "resolveFacilityCode",
+    { code },
+    "施設コードが見つかりません",
+  );
+  if (!data.apiKey || !data.facility) {
+    throw new Error("施設コードが見つかりません");
+  }
+  return { apiKey: data.apiKey, facility: data.facility };
 }
