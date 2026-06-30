@@ -99,7 +99,7 @@ export default function HomeScreen() {
 
   if (fetching) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" />
       </SafeAreaView>
     );
@@ -197,6 +197,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
     padding: 24,
+  },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
     fontSize: 28,
