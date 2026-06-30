@@ -15,7 +15,7 @@ import {
   View,
 } from "react-native";
 
-import { withAsyncLoading } from "@/lib/asyncLoad";
+import { useGuardedLoad } from "@/hooks/useGuardedLoad";
 import { copyToClipboard } from "@/lib/clipboard";
 import { showErrorAlert } from "@/lib/error";
 import { colors, inputStyle } from "@/lib/theme";
@@ -34,14 +34,13 @@ export default function UsersScreen() {
     return users.filter((u) => u.user_name.toLowerCase().includes(query));
   }, [users, searchText]);
 
-  const load = useCallback(async (setLoadingFlag: (v: boolean) => void) => {
-    const data = await withAsyncLoading(
-      () => fetchServiceUsers(),
-      setLoadingFlag,
-      showErrorAlert,
-    );
-    if (data) setUsers(data);
-  }, []);
+  const runGuarded = useGuardedLoad();
+
+  const load = useCallback(
+    (setLoadingFlag: (v: boolean) => void) =>
+      runGuarded(() => fetchServiceUsers(), setLoadingFlag, setUsers, showErrorAlert),
+    [runGuarded],
+  );
 
   const loadUsers = useCallback(() => load(setLoading), [load]);
   const handleRefresh = useCallback(() => load(setRefreshing), [load]);
