@@ -1,4 +1,4 @@
-import type { TextStyle } from "react-native";
+import type { TextStyle, ViewStyle } from "react-native";
 
 export const colors = {
   primary: "#2563eb",
@@ -25,4 +25,15 @@ export const inputStyle: TextStyle = {
   borderRadius: 8,
   padding: 12,
   fontSize: 16,
+};
+
+/** 画面全体に重ねて中央表示するローディングスピナー用のスタイル */
+export const centeredOverlayStyle: ViewStyle = {
+  position: "absolute",
+  top: 0,
+  bottom: 0,
+  left: 0,
+  right: 0,
+  justifyContent: "center",
+  alignItems: "center",
 };

@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NotificationLog } from "@/lib/api";
 import { SelectableButtonRow } from "@/components/SelectableButtonRow";
 import { useNotificationLogs } from "@/hooks/useNotificationLogs";
-import { colors, inputStyle } from "@/lib/theme";
+import { centeredOverlayStyle, colors, inputStyle } from "@/lib/theme";
 
 const PERIOD_OPTIONS = [
   { value: "today", label: "今日" },
@@ -193,15 +193,7 @@ const styles = StyleSheet.create({
   filterRow: {
     marginBottom: 16,
   },
-  loader: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  loader: centeredOverlayStyle,
   footerLoader: {
     marginVertical: 16,
   },

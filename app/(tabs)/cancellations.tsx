@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { UpcomingCancellation } from "@/lib/api";
 import { useUpcomingCancellations } from "@/hooks/useUpcomingCancellations";
 import { getTodayString } from "@/lib/schedule";
-import { colors } from "@/lib/theme";
+import { centeredOverlayStyle, colors } from "@/lib/theme";
 
 function formatCancellationDate(date: string): string {
   return new Date(date).toLocaleDateString("ja-JP", {
@@ -85,15 +85,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 16,
   },
-  loader: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  loader: centeredOverlayStyle,
   row: {
     padding: 16,
     borderWidth: 1,
