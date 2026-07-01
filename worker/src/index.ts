@@ -174,11 +174,9 @@ function normalizeSchedule(input: unknown): Schedule {
 
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  const buf = new Uint8Array(6);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => chars[b % chars.length]).join('');
 }
 
 async function authenticateFacility(apiKey: string, env: Env, headers: SupabaseHeaders): Promise<Facility | null> {
