@@ -227,16 +227,15 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
     }),
   });
 
-  if (!pushRes.ok) {
-    await writeLog(env, headers, {
-      family_id: user.id,
-      event_type: 'cancel_form_notice',
-      message: noticeMessage,
-      success: false,
-      error_message: await pushRes.text(),
-      notify_minutes: null,
-    });
-  }
+  const pushErrorText = pushRes.ok ? null : await pushRes.text();
+  await writeLog(env, headers, {
+    family_id: user.id,
+    event_type: 'cancel_form_notice',
+    message: noticeMessage,
+    success: pushRes.ok,
+    error_message: pushErrorText,
+    notify_minutes: null,
+  });
 
   return jsonResponse({ ok: true });
 }
