@@ -13,7 +13,7 @@ export async function loadStoredApiKey(): Promise<string | null> {
 }
 
 /** 施設コードに対応するAPIキーをWorker側で検証・取得し、成功した場合のみ保存する */
-export async function registerFacilityCode(code: string): Promise<Facility> {
+export async function registerFacilityCode(code: string): Promise<Pick<Facility, "id" | "name">> {
   const { apiKey, facility } = await resolveFacilityCode(code.trim());
   setApiKey(apiKey);
   await AsyncStorage.setItem(STORAGE_KEY, apiKey);

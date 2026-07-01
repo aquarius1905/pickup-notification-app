@@ -196,7 +196,7 @@ export async function updateFacilityName(name: string): Promise<Facility> {
 /** 施設コードに対応するAPIキーを取得する。APIキー認証なしで呼べる唯一のアクション */
 export async function resolveFacilityCode(
   code: string,
-): Promise<{ apiKey: string; facility: Facility }> {
+): Promise<{ apiKey: string; facility: Pick<Facility, "id" | "name"> }> {
   const data = await callWorker(
     "resolveFacilityCode",
     { code },
