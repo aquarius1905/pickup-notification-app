@@ -1,6 +1,7 @@
 import type { ServiceUser } from "@/lib/api";
 import { deleteServiceUser, fetchServiceUsers } from "@/lib/api";
 import { formatSchedule } from "@/lib/schedule";
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useMemo, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
@@ -134,6 +135,7 @@ export default function UsersScreen() {
                     <Text style={styles.linkedBadge}>LINE連携済み</Text>
                   ) : (
                     <TouchableOpacity
+                      style={styles.inviteCodeButton}
                       onPress={async () => {
                         await copyToClipboard(
                           item.invite_code,
@@ -141,8 +143,13 @@ export default function UsersScreen() {
                         );
                       }}
                     >
-                      <Text style={styles.inviteCode}>
-                        招待コード: {item.invite_code}（タップでコピー）
+                      <Ionicons
+                        name="copy-outline"
+                        size={16}
+                        color={colors.textSecondary}
+                      />
+                      <Text style={styles.inviteCodeButtonText}>
+                        招待コードをコピー
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -236,22 +243,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   scheduleText: {
-    fontSize: 13,
+    fontSize: 15,
     color: colors.textMid,
     marginTop: 4,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   linkedBadge: {
-    fontSize: 13,
+    fontSize: 14,
     color: colors.success,
     fontWeight: "600",
-    marginTop: 4,
+    marginTop: 6,
   },
-  inviteCode: {
-    fontSize: 13,
+  inviteCodeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+  },
+  inviteCodeButtonText: {
+    fontSize: 14,
     color: colors.textSecondary,
-    marginTop: 4,
-    fontFamily: "monospace",
   },
   userActions: {
     flexDirection: "row",

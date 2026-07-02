@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -126,11 +127,15 @@ export default function FacilityScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>施設コード</Text>
             <Text style={styles.description}>
-              新しい職員のスマホ設定に使います。タップでコピーできます。
+              新しい職員のスマホ設定に使います。
             </Text>
-            <TouchableOpacity onPress={handleCopyFacilityCode}>
-              <Text style={styles.facilityCodeText}>
-                {facility?.facility_code}
+            <TouchableOpacity
+              style={styles.facilityCodeButton}
+              onPress={handleCopyFacilityCode}
+            >
+              <Ionicons name="copy-outline" size={18} color={colors.primary} />
+              <Text style={styles.facilityCodeButtonText}>
+                施設コードをコピー
               </Text>
             </TouchableOpacity>
           </View>
@@ -202,11 +207,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 18,
   },
-  facilityCodeText: {
-    fontSize: 20,
+  facilityCodeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  facilityCodeButtonText: {
+    fontSize: 16,
     fontWeight: "700",
     color: colors.primary,
-    fontFamily: "monospace",
   },
   changeKeyButton: {
     borderWidth: 1,
