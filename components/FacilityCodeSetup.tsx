@@ -51,7 +51,7 @@ export function FacilityCodeSetup({ onRegistered }: Props) {
       >
         <Text style={styles.title}>施設の設定</Text>
         <Text style={styles.description}>
-          施設の管理者から伝えられた施設コードを入力してください。
+          10文字の施設コードを入力してください。
         </Text>
         <TextInput
           style={styles.input}
@@ -93,10 +93,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   description: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textSecondary,
     marginBottom: 24,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   input: {
     ...inputStyle,
