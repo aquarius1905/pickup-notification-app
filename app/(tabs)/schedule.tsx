@@ -45,7 +45,12 @@ export default function ScheduleScreen() {
 
   const { cancellations, loading, refreshing, refresh } =
     useUpcomingCancellations();
-  const { users, fetching: usersFetching } = useServiceUsers();
+  const {
+    users,
+    fetching: usersFetching,
+    refreshing: usersRefreshing,
+    refresh: refreshUsers,
+  } = useServiceUsers();
 
   const weekday = selectedDate.getDay() as Weekday;
   const selectedDateString = useMemo(
@@ -197,6 +202,15 @@ export default function ScheduleScreen() {
                 この日に利用予定の利用者はいません。
               </Text>
             )
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={usersRefreshing}
+              onRefresh={() => {
+                refreshUsers();
+                refresh();
+              }}
+            />
           }
         />
       )}
