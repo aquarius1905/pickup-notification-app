@@ -19,7 +19,13 @@ import {
 import { useGuardedLoad } from "@/hooks/useGuardedLoad";
 import { copyToClipboard } from "@/lib/clipboard";
 import { showErrorAlert } from "@/lib/error";
-import { colors, inputStyle } from "@/lib/theme";
+import {
+  cardRowStyle,
+  colors,
+  emptyTextStyle,
+  inputStyle,
+  rowHeaderStyle,
+} from "@/lib/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function UsersScreen() {
@@ -226,14 +232,8 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   userRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    marginBottom: 8,
+    ...cardRowStyle,
+    ...rowHeaderStyle,
   },
   userInfo: {
     flex: 1,
@@ -278,11 +278,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  emptyText: {
-    textAlign: "center",
-    color: colors.textMuted,
-    fontSize: 14,
-    marginTop: 32,
-    lineHeight: 22,
-  },
+  emptyText: emptyTextStyle,
 });

@@ -1,5 +1,6 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useCallback, useMemo, useState } from "react";
+import type { TextStyle } from "react-native";
 import {
   ActivityIndicator,
   FlatList,
@@ -22,7 +23,15 @@ import {
   getDaySchedule,
   getTodayString,
 } from "@/lib/schedule";
-import { centeredOverlayStyle, colors } from "@/lib/theme";
+import {
+  badgeContainerStyle,
+  badgeTextStyle,
+  cardRowStyle,
+  centeredOverlayStyle,
+  colors,
+  emptyTextStyle,
+  rowHeaderStyle,
+} from "@/lib/theme";
 
 type Mode = "schedule" | "cancellations";
 
@@ -279,31 +288,17 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   loader: centeredOverlayStyle,
-  row: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  rowHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  row: cardRowStyle,
+  rowHeader: rowHeaderStyle,
   userName: {
     fontSize: 17,
     fontWeight: "600",
   },
   badge: {
-    fontSize: 13,
-    fontWeight: "600",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    color: colors.white,
+    ...badgeContainerStyle,
+    ...badgeTextStyle,
     backgroundColor: colors.danger,
-  },
+  } as TextStyle,
   date: {
     fontSize: 16,
     color: colors.textMid,
@@ -314,11 +309,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 4,
   },
-  emptyText: {
-    textAlign: "center",
-    color: colors.textMuted,
-    fontSize: 14,
-    marginTop: 32,
-    lineHeight: 22,
-  },
+  emptyText: emptyTextStyle,
 });

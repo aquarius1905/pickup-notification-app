@@ -1,3 +1,4 @@
+import type { TextStyle } from "react-native";
 import {
   ActivityIndicator,
   FlatList,
@@ -12,7 +13,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NotificationLog } from "@/lib/api";
 import { SelectableButtonRow } from "@/components/SelectableButtonRow";
 import { useNotificationLogs } from "@/hooks/useNotificationLogs";
-import { centeredOverlayStyle, colors, inputStyle } from "@/lib/theme";
+import {
+  badgeContainerStyle,
+  badgeTextStyle,
+  cardRowStyle,
+  centeredOverlayStyle,
+  colors,
+  emptyTextStyle,
+  inputStyle,
+  rowHeaderStyle,
+} from "@/lib/theme";
 
 const PERIOD_OPTIONS = [
   { value: "today", label: "今日" },
@@ -197,30 +207,16 @@ const styles = StyleSheet.create({
   footerLoader: {
     marginVertical: 16,
   },
-  row: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  rowHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  row: cardRowStyle,
+  rowHeader: rowHeaderStyle,
   userName: {
     fontSize: 17,
     fontWeight: "600",
   },
   statusBadge: {
-    fontSize: 13,
-    fontWeight: "600",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    color: colors.white,
-  },
+    ...badgeContainerStyle,
+    ...badgeTextStyle,
+  } as TextStyle,
   statusSuccess: {
     backgroundColor: colors.success,
   },
@@ -243,11 +239,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 4,
   },
-  emptyText: {
-    textAlign: "center",
-    color: colors.textMuted,
-    fontSize: 14,
-    marginTop: 32,
-    lineHeight: 22,
-  },
+  emptyText: emptyTextStyle,
 });

@@ -1,7 +1,7 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import type { NotifyPhase } from "@/hooks/useServiceUsers";
-import { colors } from "@/lib/theme";
+import { badgeContainerStyle, badgeTextStyle, cardRowStyle, colors } from "@/lib/theme";
 import { memo } from "react";
 
 type Props = {
@@ -83,13 +83,7 @@ function ServiceUserItemBase({
 export const ServiceUserItem = memo(ServiceUserItemBase);
 
 const styles = StyleSheet.create({
-  item: {
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
+  item: cardRowStyle,
   selectedItem: {
     borderColor: colors.primary,
     backgroundColor: colors.primaryLight,
@@ -113,10 +107,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   minutesBadge: {
+    ...badgeContainerStyle,
     backgroundColor: colors.textSecondary,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
   },
   unlinkedBadge: {
     backgroundColor: colors.warning,
@@ -124,11 +116,7 @@ const styles = StyleSheet.create({
   canceledBadge: {
     backgroundColor: colors.danger,
   },
-  minutesBadgeText: {
-    fontSize: 13,
-    color: colors.white,
-    fontWeight: "600",
-  },
+  minutesBadgeText: badgeTextStyle,
   badge: {
     fontSize: 15,
     fontWeight: "600",

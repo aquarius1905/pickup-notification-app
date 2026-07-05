@@ -18,7 +18,7 @@ import {
 
 import { ServiceUserItem } from "@/components/ServiceUserItem";
 import { useServiceUsers } from "@/hooks/useServiceUsers";
-import { colors } from "@/lib/theme";
+import { colors, emptyTextStyle } from "@/lib/theme";
 import type { ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -264,11 +264,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
   },
-  emptyText: {
-    textAlign: "center",
-    color: colors.textMuted,
-    fontSize: 14,
-    marginTop: 32,
-    lineHeight: 22,
-  },
+  emptyText: emptyTextStyle,
 });
