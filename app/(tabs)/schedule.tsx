@@ -53,13 +53,12 @@ export default function ScheduleScreen() {
     [selectedDate],
   );
 
-  const canceledNamesForSelectedDate = useMemo(
+  const canceledUserIdsForSelectedDate = useMemo(
     () =>
       new Set(
         cancellations
           .filter((c) => c.date === selectedDateString)
-          .map((c) => c.family?.user_name)
-          .filter((name): name is string => Boolean(name)),
+          .map((c) => c.family_id),
       ),
     [cancellations, selectedDateString],
   );
@@ -179,7 +178,7 @@ export default function ScheduleScreen() {
             </>
           }
           renderItem={({ item }: { item: ServiceUser }) => {
-            const canceled = canceledNamesForSelectedDate.has(item.user_name);
+            const canceled = canceledUserIdsForSelectedDate.has(item.id);
             return (
               <View style={styles.row}>
                 <View style={styles.rowHeader}>

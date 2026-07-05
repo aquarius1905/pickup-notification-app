@@ -47,6 +47,7 @@ export type UpcomingCancellation = {
   id: string;
   date: string;
   reason: string | null;
+  family_id: string;
   family: { user_name: string } | null;
 };
 

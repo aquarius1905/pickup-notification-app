@@ -293,6 +293,7 @@ type UpcomingCancellation = {
   id: string;
   date: string;
   reason: string | null;
+  family_id: string;
   family: { user_name: string } | null;
 };
 
@@ -302,7 +303,7 @@ async function handleListCancellations(facilityId: string, env: Env, headers: Su
   const res = await supabaseFetch(
     env,
     `cancellations?date=gte.${today}` +
-      `&select=id,date,reason,family:families!inner(user_name)` +
+      `&select=id,date,reason,family_id,family:families!inner(user_name)` +
       `&family.facility_id=eq.${facilityId}&family.is_active=eq.true` +
       `&order=date.asc`,
     { method: 'GET', headers }
