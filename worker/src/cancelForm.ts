@@ -1,7 +1,7 @@
 import type { Env, SupabaseHeaders } from './index';
 import { getTodayDateJST, jsonResponse, supabaseFetch, writeLog } from './index';
 
-// --- 事前キャンセルフォーム（LIFF） ---
+// --- キャンセル管理フォーム（LIFF）：当日・事前を問わず、登録と取り消しをここで扱う ---
 
 const CANCEL_REASONS: Record<string, string> = {
   hospital: '通院',
@@ -14,15 +14,10 @@ function isValidCancelReason(value: unknown): value is keyof typeof CANCEL_REASO
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(CANCEL_REASONS, value);
 }
 
-/** 翌日の日付（JST基準）を YYYY-MM-DD 形式で返す */
-function getTomorrowDateJST(): string {
-  const [year, month, day] = getTodayDateJST().split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
-}
-
-function isValidFutureDate(date: string): boolean {
+/** 今日以降（当日含む）の日付か */
+function isValidCancelableDate(date: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  return date > getTodayDateJST();
+  return date >= getTodayDateJST();
 }
 
 const WEEKDAY_LABELS_JA = ['日', '月', '火', '水', '木', '金', '土'];
@@ -35,7 +30,7 @@ function formatDateJa(date: string): string {
 }
 
 export function handleCancelFormPage(env: Env): Response {
-  const tomorrow = getTomorrowDateJST();
+  const today = getTodayDateJST();
   const reasonButtons = Object.entries(CANCEL_REASONS)
     .map(([value, label]) => `<button type="button" class="reason-btn" data-value="${value}">${label}</button>`)
     .join('\n      ');
@@ -45,10 +40,11 @@ export function handleCancelFormPage(env: Env): Response {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>事前キャンセル</title>
+<title>キャンセル</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 24px 16px; background: #f7f7f7; }
   h1 { font-size: 18px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 32px 0 12px; color: #333; }
   label { display: block; font-size: 14px; margin-bottom: 8px; color: #333; }
   input[type="date"] { width: 100%; font-size: 16px; padding: 10px; margin-bottom: 24px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
   .reasons { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
@@ -58,12 +54,23 @@ export function handleCancelFormPage(env: Env): Response {
   #submit { width: 100%; font-size: 16px; padding: 14px; border: none; border-radius: 8px; background: #06c755; color: #fff; }
   #submit:disabled { background: #ccc; }
   #message { margin-top: 16px; font-size: 14px; text-align: center; }
+  #list { display: flex; flex-direction: column; gap: 8px; }
+  #list p { font-size: 14px; color: #666; }
+  .list-item { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; }
+  .list-item .info { font-size: 14px; }
+  .list-item .info .reason { color: #666; margin-left: 8px; }
+  .withdraw-btn { font-size: 13px; padding: 8px 12px; border: 1px solid #dc2626; border-radius: 6px; background: #fff; color: #dc2626; white-space: nowrap; }
 </style>
 </head>
 <body>
-  <h1>事前キャンセルのご連絡</h1>
+  <h1>キャンセルのご連絡</h1>
+
+  <h2>現在のキャンセル予定</h2>
+  <div id="list"><p>読み込み中...</p></div>
+
+  <h2>新しくキャンセルする</h2>
   <label for="date">お休みする日</label>
-  <input type="date" id="date" min="${tomorrow}">
+  <input type="date" id="date" min="${today}">
   <label>理由</label>
   <div class="reasons" id="reasons">
       ${reasonButtons}
@@ -95,10 +102,98 @@ export function handleCancelFormPage(env: Env): Response {
     }
 
     var messageEl = document.getElementById('message');
+    var listEl = document.getElementById('list');
 
-    liff.init({ liffId: '${env.LINE_LIFF_ID}' }).catch(function () {
-      messageEl.textContent = '初期化に失敗しました。LINEアプリ内から開いてください。';
-    });
+    function callCancelForm(payload) {
+      return fetch('/cancel-form', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).then(function (res) { return res.json(); });
+    }
+
+    function renderList(cancellations) {
+      if (!cancellations.length) {
+        listEl.innerHTML = '<p>現在キャンセル予定はありません。</p>';
+        return;
+      }
+      listEl.innerHTML = '';
+      cancellations.forEach(function (c) {
+        var item = document.createElement('div');
+        item.className = 'list-item';
+
+        var info = document.createElement('div');
+        info.className = 'info';
+        info.textContent = formatDateJa(c.date);
+        if (c.reason) {
+          var reasonSpan = document.createElement('span');
+          reasonSpan.className = 'reason';
+          reasonSpan.textContent = c.reason;
+          info.appendChild(reasonSpan);
+        }
+
+        var btn = document.createElement('button');
+        btn.className = 'withdraw-btn';
+        btn.textContent = '取り消す';
+        btn.addEventListener('click', function () {
+          if (!confirm(formatDateJa(c.date) + 'のキャンセルを取り消しますか？')) return;
+          btn.disabled = true;
+          var idToken = liff.getIDToken();
+          if (!idToken) {
+            messageEl.textContent = 'LINEアプリ内でこの画面を開いてください。';
+            return;
+          }
+          callCancelForm({ action: 'withdraw', idToken: idToken, id: c.id })
+            .then(function (data) {
+              if (data.ok) {
+                loadList();
+              } else {
+                messageEl.textContent = data.error || '取り消しに失敗しました。';
+                btn.disabled = false;
+              }
+            })
+            .catch(function () {
+              messageEl.textContent = '取り消しに失敗しました。通信状態をご確認ください。';
+              btn.disabled = false;
+            });
+        });
+
+        item.appendChild(info);
+        item.appendChild(btn);
+        listEl.appendChild(item);
+      });
+    }
+
+    function formatDateJa(dateStr) {
+      var parts = dateStr.split('-').map(Number);
+      var weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+      var weekday = weekdayLabels[new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])).getUTCDay()];
+      return parts[0] + '年' + parts[1] + '月' + parts[2] + '日(' + weekday + ')';
+    }
+
+    function loadList() {
+      var idToken = liff.getIDToken();
+      if (!idToken) return;
+      listEl.innerHTML = '<p>読み込み中...</p>';
+      callCancelForm({ action: 'list', idToken: idToken })
+        .then(function (data) {
+          if (data.ok) {
+            renderList(data.cancellations || []);
+          } else {
+            listEl.innerHTML = '<p>' + (data.error || '取得に失敗しました。') + '</p>';
+          }
+        })
+        .catch(function () {
+          listEl.innerHTML = '<p>取得に失敗しました。通信状態をご確認ください。</p>';
+        });
+    }
+
+    liff.init({ liffId: '${env.LINE_LIFF_ID}' })
+      .then(loadList)
+      .catch(function () {
+        messageEl.textContent = '初期化に失敗しました。LINEアプリ内から開いてください。';
+        listEl.innerHTML = '';
+      });
 
     document.getElementById('submit').addEventListener('click', function () {
       var submitBtn = document.getElementById('submit');
@@ -112,15 +207,17 @@ export function handleCancelFormPage(env: Env): Response {
         return;
       }
 
-      fetch('/cancel-form', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: idToken, date: dateInput.value, reason: selectedReason, detail: detailInput.value }),
-      })
-        .then(function (res) { return res.json(); })
+      callCancelForm({ action: 'submit', idToken: idToken, date: dateInput.value, reason: selectedReason, detail: detailInput.value })
         .then(function (data) {
           if (data.ok) {
-            messageEl.textContent = 'キャンセルを受け付けました。この画面を閉じてください。';
+            messageEl.textContent = 'キャンセルを受け付けました。';
+            dateInput.value = '';
+            reasonButtons.forEach(function (b) { b.classList.remove('selected'); });
+            selectedReason = null;
+            detailInput.value = '';
+            detailInput.style.display = 'none';
+            updateSubmitState();
+            loadList();
           } else {
             messageEl.textContent = data.error || '送信に失敗しました。';
             submitBtn.disabled = false;
@@ -139,11 +236,15 @@ export function handleCancelFormPage(env: Env): Response {
 }
 
 type CancelFormBody = {
+  action?: 'submit' | 'list' | 'withdraw';
   idToken?: string;
   date?: string;
   reason?: string;
   detail?: string;
+  id?: string;
 };
+
+type LinkedUser = { id: string; user_name: string };
 
 /** LIFFのIDトークンをLINEに照会し、検証済みのuserIdを返す（クライアント申告値は信用しない） */
 async function verifyLiffIdToken(idToken: string, env: Env): Promise<string | null> {
@@ -157,6 +258,18 @@ async function verifyLiffIdToken(idToken: string, env: Env): Promise<string | nu
   return data.sub ?? null;
 }
 
+async function findLinkedUser(verifiedUserId: string, env: Env, headers: SupabaseHeaders): Promise<LinkedUser | null> {
+  const linkedRes = await supabaseFetch(
+    env,
+    `families?line_user_id=eq.${encodeURIComponent(verifiedUserId)}&is_active=eq.true&select=id,user_name&limit=1`,
+    { method: 'GET', headers }
+  );
+  if (!linkedRes.ok) return null;
+  const linkedUsers = (await linkedRes.json()) as unknown;
+  if (!Array.isArray(linkedUsers) || linkedUsers.length === 0) return null;
+  return linkedUsers[0] as LinkedUser;
+}
+
 export async function handleCancelFormSubmit(request: Request, env: Env, headers: SupabaseHeaders): Promise<Response> {
   let body: CancelFormBody;
   try {
@@ -164,45 +277,94 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
   } catch {
     return jsonResponse({ ok: false, error: 'リクエストの形式が正しくありません。' }, 400);
   }
-  const { idToken, date, reason, detail } = body;
 
-  if (!idToken) {
+  if (!body.idToken) {
     return jsonResponse({ ok: false, error: '認証に失敗しました。LINEアプリ内から開き直してください。' }, 401);
   }
 
-  const verifiedUserId = await verifyLiffIdToken(idToken, env);
+  const verifiedUserId = await verifyLiffIdToken(body.idToken, env);
   if (!verifiedUserId) {
     return jsonResponse({ ok: false, error: '認証に失敗しました。LINEアプリ内から開き直してください。' }, 401);
   }
 
-  if (!date || !isValidFutureDate(date)) {
-    return jsonResponse({ ok: false, error: '日付を正しく指定してください。' }, 400);
+  const user = await findLinkedUser(verifiedUserId, env, headers);
+  if (!user) {
+    return jsonResponse({ ok: false, error: '利用者が見つかりません。施設にお問い合わせください。' }, 404);
+  }
+  if (!user.user_name?.trim()) {
+    return jsonResponse({ ok: false, error: '利用者情報が正しくありません。施設にお問い合わせください。' }, 500);
   }
 
+  if (body.action === 'list') {
+    return handleListOwnCancellations(user, env, headers);
+  }
+  if (body.action === 'withdraw') {
+    return handleWithdrawCancellation(body, user, env, headers);
+  }
+  return handleSubmitCancellation(body, user, verifiedUserId, env, headers);
+}
+
+type OwnCancellation = { id: string; date: string; reason: string | null };
+
+async function handleListOwnCancellations(user: LinkedUser, env: Env, headers: SupabaseHeaders): Promise<Response> {
+  const today = getTodayDateJST();
+  const res = await supabaseFetch(
+    env,
+    `cancellations?family_id=eq.${user.id}&date=gte.${today}&select=id,date,reason&order=date.asc`,
+    { method: 'GET', headers }
+  );
+  if (!res.ok) {
+    return jsonResponse({ ok: false, error: '一覧の取得に失敗しました。' }, 500);
+  }
+  const cancellations = (await res.json()) as OwnCancellation[];
+  return jsonResponse({ ok: true, cancellations });
+}
+
+async function handleWithdrawCancellation(
+  body: CancelFormBody,
+  user: LinkedUser,
+  env: Env,
+  headers: SupabaseHeaders
+): Promise<Response> {
+  const id = typeof body.id === 'string' ? body.id : '';
+  if (!id) {
+    return jsonResponse({ ok: false, error: '対象が指定されていません。' }, 400);
+  }
+
+  // family_idも条件に含め、他の利用者のキャンセルを取り消せないようにする
+  const res = await supabaseFetch(
+    env,
+    `cancellations?id=eq.${encodeURIComponent(id)}&family_id=eq.${user.id}`,
+    { method: 'DELETE', headers: { ...headers, Prefer: 'return=representation' } }
+  );
+  if (!res.ok) {
+    return jsonResponse({ ok: false, error: '取り消しに失敗しました。' }, 500);
+  }
+  const deleted = (await res.json()) as unknown;
+  if (!Array.isArray(deleted) || deleted.length === 0) {
+    return jsonResponse({ ok: false, error: '対象のキャンセルが見つかりません。' }, 404);
+  }
+  return jsonResponse({ ok: true });
+}
+
+async function handleSubmitCancellation(
+  body: CancelFormBody,
+  user: LinkedUser,
+  verifiedUserId: string,
+  env: Env,
+  headers: SupabaseHeaders
+): Promise<Response> {
+  const { date, reason, detail } = body;
+
+  if (!date || !isValidCancelableDate(date)) {
+    return jsonResponse({ ok: false, error: '日付を正しく指定してください。' }, 400);
+  }
   if (!isValidCancelReason(reason)) {
     return jsonResponse({ ok: false, error: '理由を選択してください。' }, 400);
   }
 
   const trimmedDetail = typeof detail === 'string' ? detail.trim().slice(0, CANCEL_DETAIL_MAX_LENGTH) : '';
   const finalReason = reason === 'other' && trimmedDetail ? trimmedDetail : CANCEL_REASONS[reason];
-
-  const linkedRes = await supabaseFetch(
-    env,
-    `families?line_user_id=eq.${encodeURIComponent(verifiedUserId)}&is_active=eq.true&select=id,user_name&limit=1`,
-    { method: 'GET', headers }
-  );
-  if (!linkedRes.ok) {
-    return jsonResponse({ ok: false, error: 'システムエラーが発生しました。しばらくしてからお試しください。' }, 500);
-  }
-  const linkedUsers = (await linkedRes.json()) as unknown;
-  if (!Array.isArray(linkedUsers) || linkedUsers.length === 0) {
-    return jsonResponse({ ok: false, error: '利用者が見つかりません。施設にお問い合わせください。' }, 404);
-  }
-  const user = linkedUsers[0] as { id: string; user_name: string };
-
-  if (!user.user_name?.trim()) {
-    return jsonResponse({ ok: false, error: '利用者情報が正しくありません。施設にお問い合わせください。' }, 500);
-  }
 
   const cancelRes = await supabaseFetch(env, 'cancellations?on_conflict=family_id,date', {
     method: 'POST',

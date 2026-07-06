@@ -323,13 +323,6 @@ export function getTodayDateJST(): string {
   return nowJst.toISOString().slice(0, 10);
 }
 
-const CANCEL_KEYWORDS = ['キャンセル', '休み', '欠席', '利用しません', '送迎不要'];
-const CANCEL_MESSAGE_REASON_MAX_LENGTH = 100;
-
-function isCancelMessage(text: string): boolean {
-  return CANCEL_KEYWORDS.some((keyword) => text.includes(keyword));
-}
-
 /** "today"/"week"の絞り込み開始時刻（JST基準）をUTC ISO文字列で返す。"all"等はnull */
 function getPeriodCutoff(period: unknown): string | null {
   if (period !== 'today' && period !== 'week') return null;
@@ -651,37 +644,12 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
       const linkedUsers = (await linkedRes.json()) as unknown;
 
       if (Array.isArray(linkedUsers) && linkedUsers.length > 0) {
-        const user = linkedUsers[0] as { id: string; user_name: string };
-
-        if (isCancelMessage(rawText)) {
-          const cancelRes = await supabaseFetch(
-            env,
-            'cancellations?on_conflict=family_id,date',
-            {
-              method: 'POST',
-              headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
-              body: JSON.stringify({
-                family_id: user.id,
-                date: getTodayDateJST(),
-                reason: rawText.slice(0, CANCEL_MESSAGE_REASON_MAX_LENGTH),
-              }),
-            }
-          );
-
-          await replyLineMessage(
-            event.replyToken,
-            cancelRes.ok
-              ? `${user.user_name}さんの本日のキャンセルを承りました。\n施設に申し送りいたします。`
-              : 'キャンセルの受付に失敗しました。施設にお問い合わせください。',
-            env
-          );
-        } else {
-          await replyLineMessage(
-            event.replyToken,
-            '「キャンセル」と送信すると、本日の送迎キャンセルを施設にお伝えできます。',
-            env
-          );
-        }
+        // 当日・事前を問わず、キャンセルの登録・取り消しは下部メニューの「キャンセル」に統一している
+        await replyLineMessage(
+          event.replyToken,
+          '送迎のキャンセル・取り消しは、トーク画面下のメニューの「キャンセル」からお手続きください。',
+          env
+        );
         continue;
       }
 
@@ -719,7 +687,7 @@ async function handleLineWebhook(request: Request, env: Env, headers: SupabaseHe
       if (updateRes.ok) {
         await replyLineMessage(
           event.replyToken,
-          `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。\n当日お休みする場合は「キャンセル」と送信してください。\n事前にお休みがわかっている場合は、下のメニューの「事前キャンセル」からお知らせいただけます。`,
+          `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。\nお休みする場合は、当日・事前を問わず下のメニューの「キャンセル」からお知らせください。`,
           env
         );
       } else {

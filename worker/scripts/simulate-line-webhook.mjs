@@ -9,8 +9,8 @@
 //   # 招待コードで紐付け（fakeUserIdを覚えておけば同じ「利用者」として継続テストできる）
 //   LINE_CHANNEL_SECRET=xxxx node scripts/simulate-line-webhook.mjs http://localhost:8787 Utest0001 ABC123
 //
-//   # キャンセル連絡
-//   LINE_CHANNEL_SECRET=xxxx node scripts/simulate-line-webhook.mjs http://localhost:8787 Utest0001 キャンセル
+//   # 連携済みユーザーからの任意のメッセージ（キャンセルはリッチメニューのLIFFフォームに一本化されたため案内メッセージが返る）
+//   LINE_CHANNEL_SECRET=xxxx node scripts/simulate-line-webhook.mjs http://localhost:8787 Utest0001 こんにちは
 
 import { createHmac } from "node:crypto";
 

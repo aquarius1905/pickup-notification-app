@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 「事前キャンセル」リッチメニューを作成し、画像をアップロードして全員のデフォルトに設定するスクリプト。
+// 「キャンセル」リッチメニューを作成し、画像をアップロードして全員のデフォルトに設定するスクリプト。
 // 事前に `node scripts/generate-rich-menu-image.mjs` で assets/rich-menu.png を生成しておくこと。
 // 再実行すると新しいリッチメニューが作られ、デフォルトが入れ替わる（古いものはLINE Developersコンソールから削除可能）。
 //
@@ -24,8 +24,8 @@ const imagePath = path.join(__dirname, "assets", "rich-menu.png");
 const richMenuBody = {
   size: { width: 2500, height: 843 },
   selected: true,
-  name: "事前キャンセル",
-  chatBarText: "事前キャンセル",
+  name: "キャンセル",
+  chatBarText: "キャンセル",
   areas: [
     {
       bounds: { x: 0, y: 0, width: 2500, height: 843 },
