@@ -3,15 +3,13 @@ import { getTodayDateJST, jsonResponse, supabaseFetch, writeLog } from './index'
 
 // --- キャンセル管理フォーム（LIFF）：当日・事前を問わず、登録と取り消しをここで扱う ---
 
-const CANCEL_REASONS: Record<string, string> = {
-  hospital: '通院',
-  other: 'その他',
-};
+const CANCEL_REASONS = ['通院', '体調不良', 'その他'] as const;
+const OTHER_REASON = 'その他';
 
 const CANCEL_DETAIL_MAX_LENGTH = 100;
 
-function isValidCancelReason(value: unknown): value is keyof typeof CANCEL_REASONS {
-  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(CANCEL_REASONS, value);
+function isValidCancelReason(value: unknown): value is (typeof CANCEL_REASONS)[number] {
+  return typeof value === 'string' && (CANCEL_REASONS as readonly string[]).includes(value);
 }
 
 /** 今日以降（当日含む）の日付か */
@@ -31,8 +29,8 @@ function formatDateJa(date: string): string {
 
 export function handleCancelFormPage(env: Env): Response {
   const today = getTodayDateJST();
-  const reasonButtons = Object.entries(CANCEL_REASONS)
-    .map(([value, label]) => `<button type="button" class="reason-btn" data-value="${value}">${label}</button>`)
+  const reasonButtons = CANCEL_REASONS
+    .map((label) => `<button type="button" class="reason-btn" data-value="${label}">${label}</button>`)
     .join('\n      ');
 
   const html = `<!DOCTYPE html>
@@ -89,7 +87,7 @@ export function handleCancelFormPage(env: Env): Response {
         reasonButtons.forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
         selectedReason = btn.dataset.value;
-        detailInput.style.display = selectedReason === 'other' ? 'block' : 'none';
+        detailInput.style.display = selectedReason === '${OTHER_REASON}' ? 'block' : 'none';
         updateSubmitState();
       });
     });
@@ -364,7 +362,7 @@ async function handleSubmitCancellation(
   }
 
   const trimmedDetail = typeof detail === 'string' ? detail.trim().slice(0, CANCEL_DETAIL_MAX_LENGTH) : '';
-  const finalReason = reason === 'other' && trimmedDetail ? trimmedDetail : CANCEL_REASONS[reason];
+  const finalReason = reason === OTHER_REASON && trimmedDetail ? trimmedDetail : reason;
 
   const cancelRes = await supabaseFetch(env, 'cancellations?on_conflict=family_id,date', {
     method: 'POST',
