@@ -46,7 +46,7 @@ export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
 
-    // 事前キャンセルフォーム（LIFF）：GETでフォーム画面、POSTで送信
+    // キャンセルフォーム（LIFF、当日・事前共通）：GETでフォーム画面、POSTで送信
     if (url.pathname === '/cancel-form') {
       if (request.method === 'GET') return handleCancelFormPage(env);
       if (request.method === 'POST') {
