@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -15,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 
 import { useGuardedLoad } from "@/hooks/useGuardedLoad";
 import { copyToClipboard } from "@/lib/clipboard";
@@ -28,12 +31,17 @@ import {
 } from "@/lib/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// 送迎通知専用LINE公式アカウントの友だち追加URL。全施設共通の1アカウントのため
+// 施設ごとの設定値ではなく、アプリ全体で1つのビルド時環境変数として扱う。
+const LINE_ADD_FRIEND_URL = process.env.EXPO_PUBLIC_LINE_ADD_FRIEND_URL;
+
 export default function UsersScreen() {
   const router = useRouter();
   const [users, setUsers] = useState<ServiceUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [codeModalUser, setCodeModalUser] = useState<ServiceUser | null>(null);
 
   const filteredUsers = useMemo(() => {
     const query = searchText.trim().toLowerCase();
@@ -142,20 +150,15 @@ export default function UsersScreen() {
                   ) : (
                     <TouchableOpacity
                       style={styles.inviteCodeButton}
-                      onPress={async () => {
-                        await copyToClipboard(
-                          item.invite_code,
-                          `招待コード: ${item.invite_code}`,
-                        );
-                      }}
+                      onPress={() => setCodeModalUser(item)}
                     >
                       <Ionicons
-                        name="copy-outline"
+                        name="qr-code-outline"
                         size={16}
                         color={colors.textSecondary}
                       />
                       <Text style={styles.inviteCodeButtonText}>
-                        招待コードをコピー
+                        招待コードを表示
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -185,6 +188,68 @@ export default function UsersScreen() {
           }
         />
       </View>
+
+      <Modal
+        visible={codeModalUser !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCodeModalUser(null)}
+      >
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => setCodeModalUser(null)}
+        >
+          <Pressable style={styles.codeSheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.codeSheetName}>
+              {codeModalUser?.user_name}さん
+            </Text>
+            <Text style={styles.codeSheetHint}>
+              この画面を見せるか、コードを紙に書いてお渡しください
+            </Text>
+
+            {LINE_ADD_FRIEND_URL && (
+              <View style={styles.codeStep}>
+                <Text style={styles.codeStepLabel}>
+                  ① LINEを友だち追加
+                </Text>
+                <View style={styles.qrWrapper}>
+                  <QRCode value={LINE_ADD_FRIEND_URL} size={140} />
+                </View>
+              </View>
+            )}
+
+            <View style={styles.codeStep}>
+              <Text style={styles.codeStepLabel}>
+                {LINE_ADD_FRIEND_URL
+                  ? "② このコードをトークに送信"
+                  : "招待コードをトークに送信"}
+              </Text>
+              <Text style={styles.codeSheetCode}>
+                {codeModalUser?.invite_code}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.codeCopyButton}
+              onPress={async () => {
+                if (!codeModalUser) return;
+                await copyToClipboard(
+                  codeModalUser.invite_code,
+                  `招待コード: ${codeModalUser.invite_code}`,
+                );
+              }}
+            >
+              <Ionicons name="copy-outline" size={16} color={colors.primary} />
+              <Text style={styles.codeCopyButtonText}>コピー</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.codeCloseButton}
+              onPress={() => setCodeModalUser(null)}
+            >
+              <Text style={styles.codeCloseButtonText}>閉じる</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -279,4 +344,76 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   emptyText: emptyTextStyle,
+  backdrop: {
+    flex: 1,
+    backgroundColor: colors.backdrop,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  codeSheet: {
+    width: "85%",
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 24,
+    alignItems: "center",
+  },
+  codeSheetName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  codeSheetHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: 8,
+  },
+  codeStep: {
+    alignItems: "center",
+    marginTop: 20,
+  },
+  codeStepLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textMid,
+    marginBottom: 10,
+  },
+  qrWrapper: {
+    padding: 10,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: 8,
+  },
+  codeSheetCode: {
+    fontSize: 56,
+    fontWeight: "700",
+    color: colors.primary,
+    letterSpacing: 8,
+  },
+  codeCopyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  codeCopyButtonText: {
+    fontSize: 15,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  codeCloseButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  codeCloseButtonText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
 });
