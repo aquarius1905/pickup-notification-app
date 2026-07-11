@@ -204,7 +204,9 @@ export default function UsersScreen() {
               {codeModalUser?.user_name}さん
             </Text>
             <Text style={styles.codeSheetHint}>
-              この画面を見せるか、コードを紙に書いてお渡しください
+              {LINE_ADD_FRIEND_URL
+                ? "この画面をそのままお見せください"
+                : "この画面を見せるか、コードを紙に書いてお渡しください"}
             </Text>
 
             {LINE_ADD_FRIEND_URL && (
