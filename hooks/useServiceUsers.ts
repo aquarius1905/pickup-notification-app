@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
-import { Alert, AppState } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
-import type { ServiceUser } from "@/lib/api";
+
 import { fetchServiceUsers, sendApproachingNotification } from "@/lib/api";
 import { getErrorMessage, showErrorAlert } from "@/lib/error";
-import { getTodayString } from "@/lib/schedule";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, AppState } from "react-native";
+
 import { useGuardedLoad } from "@/hooks/useGuardedLoad";
+import type { ServiceUser } from "@/lib/api";
+import { getTodayString } from "@/lib/schedule";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "expo-router";
 
 export type NotifyPhase =
   | "pickup_approaching"
@@ -19,6 +22,8 @@ export type NotifyEntry = { phase: NotifyPhase; date: string };
 export type NotifyStatus = Record<string, NotifyEntry>;
 
 const STORAGE_KEY = "notifyStatus_v3";
+
+function noop(): void {}
 
 async function loadNotifyStatus(): Promise<NotifyStatus> {
   try {
@@ -58,16 +63,32 @@ export function useServiceUsers() {
 
   const load = useCallback(
     (setLoadingFlag: (v: boolean) => void) =>
-      runGuarded(() => fetchServiceUsers(), setLoadingFlag, setUsers, showErrorAlert),
+      runGuarded(
+        () => fetchServiceUsers(),
+        setLoadingFlag,
+        setUsers,
+        showErrorAlert,
+      ),
     [runGuarded],
   );
 
-  const loadUsers = useCallback(() => load(setFetching), [load]);
   const refresh = useCallback(() => load(setRefreshing), [load]);
 
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+  // タブ画面はアンマウントされないため、フォーカスのたびに再取得して
+  // 他画面での削除・編集を反映する（マウント時の初回取得もこれで兼ねる）。
+  // 初回はスピナーを見せて読み込むが、タブ復帰時は一覧を表示したまま
+  // 裏で再取得し、切り替えるたびに画面がブロックされて遅く感じるのを防ぐ。
+  const isFirstLoad = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstLoad.current) {
+        isFirstLoad.current = false;
+        load(setFetching);
+      } else {
+        load(noop);
+      }
+    }, [load]),
+  );
 
   // アプリがフォアグラウンドに戻った時、日付が変わっていれば古いエントリを削除
   useEffect(() => {
@@ -105,61 +126,59 @@ export function useServiceUsers() {
 
   // 「あと◯分」通知を送信し、*_approaching フェーズへ
   // LINE未連携の利用者は電話連絡の記録としてログに残す（LINE送信はしない）
-  const notifyApproaching = useCallback(
-    () => {
-      if (!selectedUser) {
-        Alert.alert("エラー", "利用者を選択してください");
-        return;
-      }
-      const targetId = selectedUser;
-      const currentPhase = notified[targetId]?.phase;
+  const notifyApproaching = useCallback(() => {
+    if (!selectedUser) {
+      Alert.alert("エラー", "利用者を選択してください");
+      return;
+    }
+    const targetId = selectedUser;
+    const currentPhase = notified[targetId]?.phase;
 
-      const nextPhase: NotifyPhase | null =
-        !currentPhase ? "pickup_approaching"
-        : currentPhase === "pickup_completed" ? "dropoff_approaching"
+    const nextPhase: NotifyPhase | null = !currentPhase
+      ? "pickup_approaching"
+      : currentPhase === "pickup_completed"
+        ? "dropoff_approaching"
         : null;
 
-      if (!nextPhase) return;
+    if (!nextPhase) return;
 
-      const user = users.find((u) => u.id === targetId);
-      const displayName = user?.user_name ?? "";
-      const minutes = user?.notify_minutes ?? 10;
-      const label = nextPhase === "pickup_approaching" ? "お迎え" : "お送り";
-      const isLinked = Boolean(user?.line_user_id);
+    const user = users.find((u) => u.id === targetId);
+    const displayName = user?.user_name ?? "";
+    const minutes = user?.notify_minutes ?? 10;
+    const label = nextPhase === "pickup_approaching" ? "お迎え" : "お送り";
+    const isLinked = Boolean(user?.line_user_id);
 
-      const confirmMessage = isLinked
-        ? `${displayName}さんにあと${minutes}分で到着の通知を送りますか？`
-        : `${displayName}さんに${label}の電話連絡をしましたか？`;
-      const confirmButtonText = isLinked ? "送信" : "連絡済みにする";
-      const successToastTitle = isLinked
-        ? `${displayName}さんに${label}あと${minutes}分の通知を送りました`
-        : `${displayName}さんを${label}連絡済みにしました`;
+    const confirmMessage = isLinked
+      ? `${displayName}さんにあと${minutes}分で到着の通知を送りますか？`
+      : `${displayName}さんに${label}の電話連絡をしましたか？`;
+    const confirmButtonText = isLinked ? "送信" : "連絡済みにする";
+    const successToastTitle = isLinked
+      ? `${displayName}さんに${label}あと${minutes}分の通知を送りました`
+      : `${displayName}さんを${label}連絡済みにしました`;
 
-      Alert.alert("確認", confirmMessage, [
-        { text: "キャンセル", style: "cancel" },
-        {
-          text: confirmButtonText,
-          onPress: async () => {
-            try {
-              setSending(true);
-              await sendApproachingNotification(targetId, nextPhase);
-              setSelectedUser(null);
-              Burnt.toast({ title: successToastTitle, preset: "done" });
-              recordNotified(targetId, nextPhase);
-            } catch (error) {
-              await Haptics.notificationAsync(
-                Haptics.NotificationFeedbackType.Error,
-              );
-              Alert.alert("通知失敗", getErrorMessage(error));
-            } finally {
-              setSending(false);
-            }
-          },
+    Alert.alert("確認", confirmMessage, [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: confirmButtonText,
+        onPress: async () => {
+          try {
+            setSending(true);
+            await sendApproachingNotification(targetId, nextPhase);
+            setSelectedUser(null);
+            Burnt.toast({ title: successToastTitle, preset: "done" });
+            recordNotified(targetId, nextPhase);
+          } catch (error) {
+            await Haptics.notificationAsync(
+              Haptics.NotificationFeedbackType.Error,
+            );
+            Alert.alert("通知失敗", getErrorMessage(error));
+          } finally {
+            setSending(false);
+          }
         },
-      ]);
-    },
-    [selectedUser, notified, users, recordNotified],
-  );
+      },
+    ]);
+  }, [selectedUser, notified, users, recordNotified]);
 
   // お迎え済み / お送り済みを記録（LINE通知なし）
   const markComplete = useCallback(() => {
@@ -168,9 +187,11 @@ export function useServiceUsers() {
     const currentPhase = notified[targetId]?.phase;
 
     const nextPhase: NotifyPhase | null =
-      currentPhase === "pickup_approaching" ? "pickup_completed"
-      : currentPhase === "dropoff_approaching" ? "dropoff_completed"
-      : null;
+      currentPhase === "pickup_approaching"
+        ? "pickup_completed"
+        : currentPhase === "dropoff_approaching"
+          ? "dropoff_completed"
+          : null;
 
     if (!nextPhase) return;
 
