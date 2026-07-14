@@ -12,13 +12,14 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 
 import { ServiceUserItem } from "@/components/ServiceUserItem";
 import { useServiceUsers } from "@/hooks/useServiceUsers";
-import { colors, emptyTextStyle } from "@/lib/theme";
+import { colors, emptyTextStyle, inputStyle } from "@/lib/theme";
 import type { ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -64,6 +65,7 @@ export default function HomeScreen() {
     notified,
   } = useServiceUsers();
   const [showAll, setShowAll] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
   const today = getCurrentWeekday();
   const todayLabel = WEEKDAY_LABELS[today];
@@ -76,6 +78,13 @@ export default function HomeScreen() {
     () => (showAll ? users : todayUsers),
     [showAll, users, todayUsers],
   );
+  const searchedUsers = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    if (!query) return visibleUsers;
+    return visibleUsers.filter((u) =>
+      u.user_name.toLowerCase().includes(query),
+    );
+  }, [visibleUsers, searchText]);
 
   const selectedEntry = selectedUser ? notified[selectedUser] : undefined;
   const isApproaching =
@@ -130,8 +139,15 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      <TextInput
+        style={styles.searchInput}
+        placeholder="利用者名で検索"
+        value={searchText}
+        onChangeText={setSearchText}
+      />
+
       <FlatList
-        data={visibleUsers}
+        data={searchedUsers}
         keyExtractor={(user) => String(user.id)}
         renderItem={({ item: user }) => (
           <ServiceUserItem
@@ -149,9 +165,11 @@ export default function HomeScreen() {
         style={styles.list}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
-            {showAll
-              ? `利用者が登録されていません。${"\n"}「利用者管理」タブから追加してください。`
-              : `本日（${todayLabel}）通所予定の利用者はいません。${"\n"}「全員表示」で確認できます。`}
+            {searchText
+              ? "検索条件に一致する利用者がいません。"
+              : showAll
+                ? `利用者が登録されていません。${"\n"}「利用者管理」タブから追加してください。`
+                : `本日（${todayLabel}）通所予定の利用者はいません。${"\n"}「全員表示」で確認できます。`}
           </Text>
         }
         refreshControl={
@@ -227,6 +245,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: "600",
+  },
+  searchInput: {
+    ...inputStyle,
+    marginBottom: 16,
   },
   list: {
     flex: 1,
