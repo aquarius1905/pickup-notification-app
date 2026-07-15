@@ -62,6 +62,29 @@ npm run generate-rich-menu-image
 LINE_TOKEN=xxxx LINE_LIFF_ID=yyyy npm run setup-rich-menu
 ```
 
+### データベースマイグレーション
+
+`supabase/migrations/`配下のSQLファイルをSupabase CLIで管理している。`main`にマージされると、GitHub Actions（`.github/workflows/db-migrations.yml`）が自動でSupabase本番DBに適用する。
+
+初回のみ、以下をローカルで一度実行する。
+
+```bash
+npx supabase login
+npx supabase link --project-ref <SupabaseのプロジェクトRef>
+# 001〜011は既に手動適用済みのため、適用済みとして記録する（実際にはDBに反映しない）
+npx supabase migration repair --status applied <各マイグレーションのtimestamp>
+```
+
+また、GitHubリポジトリのSecretsに以下を設定する（Settings > Secrets and variables > Actions）。
+
+| Secret名 | 説明 |
+|--------|------|
+| `SUPABASE_ACCESS_TOKEN` | [アカウント設定](https://supabase.com/dashboard/account/tokens)で発行するPersonal Access Token |
+| `SUPABASE_PROJECT_ID` | SupabaseプロジェクトのRef（ダッシュボードのURLやプロジェクト設定に表示される） |
+| `SUPABASE_DB_PASSWORD` | プロジェクト作成時に設定したDBパスワード |
+
+新しいマイグレーションを追加する場合は `npx supabase migration new <名前>` でファイルを作成し、SQLを書いて`main`にマージするだけでよい。
+
 ### 環境変数（アプリ側 `.env`）
 
 | 変数名 | 説明 |
