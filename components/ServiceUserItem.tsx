@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import type { NotifyPhase } from "@/hooks/useServiceUsers";
+import type { NotifyPhase } from "@/lib/api";
 import { badgeContainerStyle, badgeTextStyle, cardRowStyle, colors } from "@/lib/theme";
 import { memo } from "react";
 

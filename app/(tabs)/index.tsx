@@ -88,9 +88,9 @@ export default function HomeScreen() {
 
   const selectedEntry = selectedUser ? notified[selectedUser] : undefined;
   const isApproaching =
-    selectedEntry?.phase === "pickup_approaching" ||
-    selectedEntry?.phase === "dropoff_approaching";
-  const isDone = selectedEntry?.phase === "dropoff_completed";
+    selectedEntry === "pickup_approaching" ||
+    selectedEntry === "dropoff_approaching";
+  const isDone = selectedEntry === "dropoff_completed";
   const selectedUserData = useMemo(
     () => users.find((u) => u.id === selectedUser),
     [users, selectedUser],
@@ -155,7 +155,7 @@ export default function HomeScreen() {
             name={user.user_name}
             selected={selectedUser === user.id}
             onSelect={handleSelectUser}
-            notifyPhase={notified[user.id]?.phase}
+            notifyPhase={notified[user.id]}
             notifyMinutes={user.notify_minutes}
             schedule={formatDayTime(getDaySchedule(user, today))}
             lineLinked={Boolean(user.line_user_id)}
@@ -182,7 +182,7 @@ export default function HomeScreen() {
           {isApproaching ? (
             <NotifyButton
               label={
-                selectedEntry?.phase === "pickup_approaching"
+                selectedEntry === "pickup_approaching"
                   ? "お迎え済み"
                   : "お送り済み"
               }

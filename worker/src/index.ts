@@ -25,6 +25,8 @@ type FamilyRecord = {
   notify_minutes: 5 | 10;
 };
 
+type NotifyPhase = 'pickup_approaching' | 'pickup_completed' | 'dropoff_approaching' | 'dropoff_completed';
+
 type RequestBody = {
   action?: string;
   userName?: string;
@@ -282,11 +284,43 @@ async function handleList(facilityId: string, env: Env, headers: SupabaseHeaders
   if (!res.ok) return supabaseErrorResponse(res);
 
   const rows = (await res.json()) as (FamilyRecord & { cancellations: { date: string }[] })[];
+  const todayPhases = await fetchTodayPhases(env, headers, rows.map((row) => row.id));
   const users = rows.map(({ cancellations, ...rest }) => ({
     ...rest,
     canceled_today: cancellations.length > 0,
+    today_phase: todayPhases[rest.id] ?? null,
   }));
   return jsonResponse({ ok: true, users });
+}
+
+/** スタッフが押した「あと◯分通知」「お迎え/お送り済み」の、利用者ごとの今日時点での最新フェーズ */
+async function fetchTodayPhases(
+  env: Env,
+  headers: SupabaseHeaders,
+  familyIds: string[],
+): Promise<Record<string, NotifyPhase>> {
+  const cutoff = getPeriodCutoff('today');
+  if (familyIds.length === 0 || !cutoff) return {};
+
+  const res = await supabaseFetch(
+    env,
+    `logs?family_id=in.(${familyIds.join(',')})` +
+      `&event_type=in.(pickup_approaching,dropoff_approaching,pickup_completed,dropoff_completed)` +
+      `&created_at=gte.${encodeURIComponent(cutoff)}` +
+      `&select=family_id,event_type,created_at&order=created_at.desc`,
+    { method: 'GET', headers }
+  );
+  if (!res.ok) return {};
+
+  const rows = (await res.json()) as { family_id: string; event_type: NotifyPhase }[];
+  const phases: Record<string, NotifyPhase> = {};
+  for (const row of rows) {
+    // created_at降順なので、各family_idについて最初に出てきたものが最新
+    if (!(row.family_id in phases)) {
+      phases[row.family_id] = row.event_type;
+    }
+  }
+  return phases;
 }
 
 type UpcomingCancellation = {
@@ -352,7 +386,9 @@ async function handleListLogs(body: RequestBody, facilityId: string, env: Env, h
 
   let query =
     `logs?select=id,event_type,message,success,error_message,created_at,notify_minutes,family:families!inner(user_name)` +
-    `&family.facility_id=eq.${facilityId}`;
+    `&family.facility_id=eq.${facilityId}` +
+    // 「お迎え/お送り済み」はLINE通知ではなくスタッフ用の記録なので、通知履歴には出さない
+    `&event_type=not.in.(pickup_completed,dropoff_completed)`;
   if (search) {
     query += `&family.user_name=ilike.*${encodeURIComponent(search)}*`;
   }
@@ -374,10 +410,18 @@ async function handleListLogs(body: RequestBody, facilityId: string, env: Env, h
   return jsonResponse({ ok: true, logs, hasMore });
 }
 
+const COMPLETED_LABELS: Record<string, string> = {
+  pickup_completed: 'お迎え',
+  dropoff_completed: 'お送り',
+};
+
 async function handleNotify(body: RequestBody, facilityId: string, env: Env, headers: SupabaseHeaders): Promise<Response> {
   const { userId, notifyType } = body;
 
-  if (notifyType !== 'pickup_approaching' && notifyType !== 'dropoff_approaching') {
+  const isApproaching = notifyType === 'pickup_approaching' || notifyType === 'dropoff_approaching';
+  const isCompleted = notifyType === 'pickup_completed' || notifyType === 'dropoff_completed';
+
+  if (!isApproaching && !isCompleted) {
     return jsonResponse({ ok: false, error: '通知の処理でエラーが発生しました。' }, 400);
   }
 
@@ -396,6 +440,19 @@ async function handleNotify(body: RequestBody, facilityId: string, env: Env, hea
 
   if (!user.user_name?.trim()) {
     return jsonResponse({ ok: false, error: 'user_name is empty' }, 500);
+  }
+
+  if (isCompleted) {
+    // 「お迎え/お送り済み」はスタッフ側の記録用で、LINEへは何も送信しない
+    await writeLog(env, headers, {
+      family_id: user.id,
+      event_type: notifyType as string,
+      message: `${COMPLETED_LABELS[notifyType as string]}済みにしました`,
+      success: true,
+      error_message: null,
+      notify_minutes: null,
+    });
+    return jsonResponse({ ok: true });
   }
 
   const message = `あと${user.notify_minutes ?? 10}分で到着します`;

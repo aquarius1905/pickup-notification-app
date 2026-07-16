@@ -83,6 +83,7 @@ export default function UserFormScreen() {
         schedule,
         notify_minutes: notifyMinutes,
         canceled_today: false,
+        today_phase: null,
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

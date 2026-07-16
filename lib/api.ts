@@ -27,6 +27,12 @@ export type DaySchedule = {
 
 export type Schedule = Partial<Record<`${Weekday}`, DaySchedule>>;
 
+export type NotifyPhase =
+  | "pickup_approaching"
+  | "pickup_completed"
+  | "dropoff_approaching"
+  | "dropoff_completed";
+
 export type ServiceUser = {
   id: string;
   user_name: string;
@@ -35,6 +41,7 @@ export type ServiceUser = {
   schedule: Schedule;
   notify_minutes: 5 | 10;
   canceled_today: boolean;
+  today_phase: NotifyPhase | null;
 };
 
 export type Facility = {
@@ -130,9 +137,10 @@ export async function fetchUpcomingCancellations(): Promise<UpcomingCancellation
   return data.cancellations ?? [];
 }
 
-export async function sendApproachingNotification(
+/** 「あと◯分」通知の送信、および「お迎え/お送り済み」の記録。どちらもサーバー側に記録され、他端末にも反映される */
+export async function recordNotifyPhase(
   userId: string,
-  notifyType: "pickup_approaching" | "dropoff_approaching",
+  notifyType: NotifyPhase,
 ): Promise<void> {
   await callWorker("notify", { userId, notifyType }, "通知送信に失敗しました");
 }

@@ -1,51 +1,18 @@
 import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
 
-import { fetchServiceUsers, sendApproachingNotification } from "@/lib/api";
+import { fetchServiceUsers, recordNotifyPhase } from "@/lib/api";
 import { getErrorMessage, showErrorAlert } from "@/lib/error";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, AppState } from "react-native";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Alert } from "react-native";
 
 import { useGuardedLoad } from "@/hooks/useGuardedLoad";
-import type { ServiceUser } from "@/lib/api";
-import { getTodayString } from "@/lib/schedule";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { NotifyPhase, ServiceUser } from "@/lib/api";
 import { useFocusEffect } from "expo-router";
 
-export type NotifyPhase =
-  | "pickup_approaching"
-  | "pickup_completed"
-  | "dropoff_approaching"
-  | "dropoff_completed";
-
-export type NotifyEntry = { phase: NotifyPhase; date: string };
-export type NotifyStatus = Record<string, NotifyEntry>;
-
-const STORAGE_KEY = "notifyStatus_v3";
+export type { NotifyPhase };
 
 function noop(): void {}
-
-async function loadNotifyStatus(): Promise<NotifyStatus> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed: NotifyStatus = JSON.parse(raw);
-    const today = getTodayString();
-    return Object.fromEntries(
-      Object.entries(parsed).filter(([, entry]) => entry.date === today),
-    );
-  } catch {
-    return {};
-  }
-}
-
-async function saveNotifyStatus(status: NotifyStatus): Promise<void> {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(status));
-  } catch {
-    // 保存失敗はサイレントに無視（UIへの影響なし）
-  }
-}
 
 export function useServiceUsers() {
   const [users, setUsers] = useState<ServiceUser[]>([]);
@@ -53,13 +20,20 @@ export function useServiceUsers() {
   const [fetching, setFetching] = useState(true);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [notified, setNotified] = useState<NotifyStatus>({});
+
+  // 「今日どのフェーズまで進んだか」はサーバー(logs)を正として持つため、
+  // usersの中の値をそのまま参照する（他端末での操作もフォーカスのたびに反映される）
+  const notified = useMemo(
+    () =>
+      Object.fromEntries(
+        users
+          .filter((u): u is ServiceUser & { today_phase: NotifyPhase } => u.today_phase !== null)
+          .map((u) => [u.id, u.today_phase]),
+      ),
+    [users],
+  );
 
   const runGuarded = useGuardedLoad();
-
-  useEffect(() => {
-    loadNotifyStatus().then(setNotified);
-  }, []);
 
   const load = useCallback(
     (setLoadingFlag: (v: boolean) => void) =>
@@ -75,7 +49,7 @@ export function useServiceUsers() {
   const refresh = useCallback(() => load(setRefreshing), [load]);
 
   // タブ画面はアンマウントされないため、フォーカスのたびに再取得して
-  // 他画面での削除・編集を反映する（マウント時の初回取得もこれで兼ねる）。
+  // 他画面・他端末での変更を反映する（マウント時の初回取得もこれで兼ねる）。
   // 初回はスピナーを見せて読み込むが、タブ復帰時は一覧を表示したまま
   // 裏で再取得し、切り替えるたびに画面がブロックされて遅く感じるのを防ぐ。
   const isFirstLoad = useRef(true);
@@ -90,36 +64,12 @@ export function useServiceUsers() {
     }, [load]),
   );
 
-  // アプリがフォアグラウンドに戻った時、日付が変わっていれば古いエントリを削除
-  useEffect(() => {
-    const resetOldEntries = () => {
-      const today = getTodayString();
-      setNotified((prev) => {
-        const next = Object.fromEntries(
-          Object.entries(prev).filter(([, entry]) => entry.date === today),
-        );
-        if (Object.keys(next).length === Object.keys(prev).length) return prev;
-        saveNotifyStatus(next);
-        return next;
-      });
-    };
-
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") resetOldEntries();
-    });
-    return () => sub.remove();
-  }, []);
-
-  const recordNotified = useCallback(
+  // サーバーへの反映を待たずに一覧上の表示を即時更新する（次のフォーカス時にサーバー値で上書きされる）
+  const setPhaseOptimistically = useCallback(
     (targetUser: string, phase: NotifyPhase) => {
-      setNotified((prev) => {
-        const next = {
-          ...prev,
-          [targetUser]: { phase, date: getTodayString() },
-        };
-        saveNotifyStatus(next);
-        return next;
-      });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === targetUser ? { ...u, today_phase: phase } : u)),
+      );
     },
     [],
   );
@@ -132,7 +82,7 @@ export function useServiceUsers() {
       return;
     }
     const targetId = selectedUser;
-    const currentPhase = notified[targetId]?.phase;
+    const currentPhase = notified[targetId];
 
     const nextPhase: NotifyPhase | null = !currentPhase
       ? "pickup_approaching"
@@ -163,10 +113,10 @@ export function useServiceUsers() {
         onPress: async () => {
           try {
             setSending(true);
-            await sendApproachingNotification(targetId, nextPhase);
+            await recordNotifyPhase(targetId, nextPhase);
             setSelectedUser(null);
             Burnt.toast({ title: successToastTitle, preset: "done" });
-            recordNotified(targetId, nextPhase);
+            setPhaseOptimistically(targetId, nextPhase);
           } catch (error) {
             await Haptics.notificationAsync(
               Haptics.NotificationFeedbackType.Error,
@@ -178,13 +128,13 @@ export function useServiceUsers() {
         },
       },
     ]);
-  }, [selectedUser, notified, users, recordNotified]);
+  }, [selectedUser, notified, users, setPhaseOptimistically]);
 
   // お迎え済み / お送り済みを記録（LINE通知なし）
   const markComplete = useCallback(() => {
     if (!selectedUser) return;
     const targetId = selectedUser;
-    const currentPhase = notified[targetId]?.phase;
+    const currentPhase = notified[targetId];
 
     const nextPhase: NotifyPhase | null =
       currentPhase === "pickup_approaching"
@@ -198,13 +148,23 @@ export function useServiceUsers() {
     const user = users.find((u) => u.id === targetId);
     const displayName = user?.user_name ?? "";
     const label = nextPhase === "pickup_completed" ? "お迎え" : "お送り";
+
     setSelectedUser(null);
-    recordNotified(targetId, nextPhase);
-    Burnt.toast({
-      title: `${displayName}さんを${label}済みにしました`,
-      preset: "done",
-    });
-  }, [selectedUser, notified, users, recordNotified]);
+    setSending(true);
+    recordNotifyPhase(targetId, nextPhase)
+      .then(() => {
+        setPhaseOptimistically(targetId, nextPhase);
+        Burnt.toast({
+          title: `${displayName}さんを${label}済みにしました`,
+          preset: "done",
+        });
+      })
+      .catch(async (error) => {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("記録に失敗しました", getErrorMessage(error));
+      })
+      .finally(() => setSending(false));
+  }, [selectedUser, notified, users, setPhaseOptimistically]);
 
   return {
     users,
