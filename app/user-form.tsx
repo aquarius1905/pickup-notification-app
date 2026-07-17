@@ -6,6 +6,7 @@ import {
 } from "@/lib/schedule";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
   Alert,
@@ -149,8 +150,11 @@ export default function UserFormScreen() {
             <Text style={styles.title}>
               {isEditing ? "利用者を編集" : "利用者を追加"}
             </Text>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.closeText}>閉じる</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="close" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -248,10 +252,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
   },
-  closeText: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: "600",
+  closeButton: {
+    padding: 4,
+    marginRight: -4,
   },
   input: {
     ...inputStyle,
