@@ -200,14 +200,22 @@ export default function UsersScreen() {
           onPress={() => setCodeModalUser(null)}
         >
           <Pressable style={styles.codeSheet} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.codeSheetName}>
-              {codeModalUser?.user_name}さん
-            </Text>
-            <Text style={styles.codeSheetHint}>
-              {LINE_ADD_FRIEND_URL
-                ? "この画面をそのままお見せください"
-                : "この画面を見せるか、コードを紙に書いてお渡しください"}
-            </Text>
+            <View style={styles.codeSheetHeader}>
+              <Text style={styles.codeSheetName}>
+                {codeModalUser?.user_name}さん
+              </Text>
+              <TouchableOpacity
+                style={styles.codeCloseIconButton}
+                onPress={() => setCodeModalUser(null)}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {!LINE_ADD_FRIEND_URL && (
+              <Text style={styles.codeSheetHint}>
+                この画面を見せるか、コードを紙に書いてお渡しください
+              </Text>
+            )}
 
             {LINE_ADD_FRIEND_URL && (
               <View style={styles.codeStep}>
@@ -242,12 +250,6 @@ export default function UsersScreen() {
             >
               <Ionicons name="copy-outline" size={16} color={colors.primary} />
               <Text style={styles.codeCopyButtonText}>コピー</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.codeCloseButton}
-              onPress={() => setCodeModalUser(null)}
-            >
-              <Text style={styles.codeCloseButtonText}>閉じる</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -359,10 +361,20 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: "center",
   },
+  codeSheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+  },
   codeSheetName: {
     fontSize: 18,
     fontWeight: "700",
     color: colors.text,
+  },
+  codeCloseIconButton: {
+    padding: 4,
+    marginRight: -4,
   },
   codeSheetHint: {
     fontSize: 13,
@@ -409,13 +421,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.primary,
     fontWeight: "600",
-  },
-  codeCloseButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  codeCloseButtonText: {
-    fontSize: 14,
-    color: colors.textSecondary,
   },
 });
