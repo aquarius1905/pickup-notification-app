@@ -49,3 +49,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# local build artifacts (eas build --local)
+*.apk
+*.aab
