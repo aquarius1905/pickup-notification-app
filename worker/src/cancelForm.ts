@@ -71,13 +71,13 @@ export function handleCancelFormPage(env: Env): Response {
   .list-item .info .reason { color: #666; margin-left: 8px; }
   .withdraw-btn { font-size: 13px; padding: 8px 12px; border: 1px solid #dc2626; border-radius: 6px; background: #fff; color: #dc2626; white-space: nowrap; }
   .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
-  .confirm-box { background: #eee; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; box-sizing: border-box; }
+  .confirm-box { background: #fff; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; box-sizing: border-box; }
   .confirm-box p { font-size: 15px; color: #222; margin: 0 0 20px; text-align: center; }
   .confirm-buttons { display: flex; gap: 8px; }
   .confirm-btn { flex: 1; font-size: 15px; padding: 12px; border-radius: 8px; border: none; }
   .confirm-btn-cancel { background: #eee; color: #333; }
   .confirm-btn-ok { background: #06c755; color: #fff; }
-  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: rgba(0,0,0,0.8); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; max-width: calc(100% - 32px); text-align: center; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); display: inline-block; width: max-content; white-space: nowrap; background: rgba(0,0,0,0.8); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; max-width: calc(100% - 32px); text-align: center; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
