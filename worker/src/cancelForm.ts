@@ -1,15 +1,25 @@
-import type { Env, SupabaseHeaders } from './index';
-import { getTodayDateJST, jsonResponse, supabaseFetch, writeLog } from './index';
+import type { Env, SupabaseHeaders } from "./index";
+import {
+  getTodayDateJST,
+  jsonResponse,
+  supabaseFetch,
+  writeLog,
+} from "./index";
 
 // --- キャンセル管理フォーム（LIFF）：当日・事前を問わず、登録と取り消しをここで扱う ---
 
-const CANCEL_REASONS = ['通院', '体調不良', 'その他'] as const;
-const OTHER_REASON = 'その他';
+const CANCEL_REASONS = ["通院", "体調不良", "その他"] as const;
+const OTHER_REASON = "その他";
 
 const CANCEL_DETAIL_MAX_LENGTH = 100;
 
-function isValidCancelReason(value: unknown): value is (typeof CANCEL_REASONS)[number] {
-  return typeof value === 'string' && (CANCEL_REASONS as readonly string[]).includes(value);
+function isValidCancelReason(
+  value: unknown,
+): value is (typeof CANCEL_REASONS)[number] {
+  return (
+    typeof value === "string" &&
+    (CANCEL_REASONS as readonly string[]).includes(value)
+  );
 }
 
 /** 今日以降（当日含む）の日付か */
@@ -18,20 +28,22 @@ function isValidCancelableDate(date: string): boolean {
   return date >= getTodayDateJST();
 }
 
-const WEEKDAY_LABELS_JA = ['日', '月', '火', '水', '木', '金', '土'];
+const WEEKDAY_LABELS_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
 /** "YYYY-MM-DD" を "YYYY年MM月DD日(曜日)" 形式に変換する */
 function formatDateJa(date: string): string {
-  const [year, month, day] = date.split('-').map(Number);
-  const weekday = WEEKDAY_LABELS_JA[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  const [year, month, day] = date.split("-").map(Number);
+  const weekday =
+    WEEKDAY_LABELS_JA[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
   return `${year}年${month}月${day}日(${weekday})`;
 }
 
 export function handleCancelFormPage(env: Env): Response {
   const today = getTodayDateJST();
-  const reasonButtons = CANCEL_REASONS
-    .map((label) => `<button type="button" class="reason-btn" data-value="${label}">${label}</button>`)
-    .join('\n      ');
+  const reasonButtons = CANCEL_REASONS.map(
+    (label) =>
+      `<button type="button" class="reason-btn" data-value="${label}">${label}</button>`,
+  ).join("\n      ");
 
   const html = `<!DOCTYPE html>
 <html lang="ja">
@@ -59,12 +71,12 @@ export function handleCancelFormPage(env: Env): Response {
   .list-item .info .reason { color: #666; margin-left: 8px; }
   .withdraw-btn { font-size: 13px; padding: 8px 12px; border: 1px solid #dc2626; border-radius: 6px; background: #fff; color: #dc2626; white-space: nowrap; }
   .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
-  .confirm-box { background: #fff; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; box-sizing: border-box; }
-  .confirm-box p { font-size: 15px; color: #111; margin: 0 0 20px; text-align: center; }
+  .confirm-box { background: #eee; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; box-sizing: border-box; }
+  .confirm-box p { font-size: 15px; color: #222; margin: 0 0 20px; text-align: center; }
   .confirm-buttons { display: flex; gap: 8px; }
   .confirm-btn { flex: 1; font-size: 15px; padding: 12px; border-radius: 8px; border: none; }
   .confirm-btn-cancel { background: #eee; color: #333; }
-  .confirm-btn-ok { background: #dc2626; color: #fff; }
+  .confirm-btn-ok { background: #06c755; color: #fff; }
 </style>
 </head>
 <body>
@@ -269,11 +281,13 @@ export function handleCancelFormPage(env: Env): Response {
 </body>
 </html>`;
 
-  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=UTF-8' } });
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=UTF-8" },
+  });
 }
 
 type CancelFormBody = {
-  action?: 'submit' | 'list' | 'withdraw';
+  action?: "submit" | "list" | "withdraw";
   idToken?: string;
   date?: string;
   reason?: string;
@@ -284,22 +298,32 @@ type CancelFormBody = {
 type LinkedUser = { id: string; user_name: string };
 
 /** LIFFのIDトークンをLINEに照会し、検証済みのuserIdを返す（クライアント申告値は信用しない） */
-async function verifyLiffIdToken(idToken: string, env: Env): Promise<string | null> {
-  const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ id_token: idToken, client_id: env.LINE_CHANNEL_ID }),
+async function verifyLiffIdToken(
+  idToken: string,
+  env: Env,
+): Promise<string | null> {
+  const res = await fetch("https://api.line.me/oauth2/v2.1/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      id_token: idToken,
+      client_id: env.LINE_CHANNEL_ID,
+    }),
   });
   if (!res.ok) return null;
   const data = (await res.json()) as { sub?: string };
   return data.sub ?? null;
 }
 
-async function findLinkedUser(verifiedUserId: string, env: Env, headers: SupabaseHeaders): Promise<LinkedUser | null> {
+async function findLinkedUser(
+  verifiedUserId: string,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<LinkedUser | null> {
   const linkedRes = await supabaseFetch(
     env,
     `families?line_user_id=eq.${encodeURIComponent(verifiedUserId)}&is_active=eq.true&select=id,user_name&limit=1`,
-    { method: 'GET', headers }
+    { method: "GET", headers },
   );
   if (!linkedRes.ok) return null;
   const linkedUsers = (await linkedRes.json()) as unknown;
@@ -307,35 +331,66 @@ async function findLinkedUser(verifiedUserId: string, env: Env, headers: Supabas
   return linkedUsers[0] as LinkedUser;
 }
 
-export async function handleCancelFormSubmit(request: Request, env: Env, headers: SupabaseHeaders): Promise<Response> {
+export async function handleCancelFormSubmit(
+  request: Request,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<Response> {
   let body: CancelFormBody;
   try {
     body = (await request.json()) as CancelFormBody;
   } catch {
-    return jsonResponse({ ok: false, error: 'リクエストの形式が正しくありません。' }, 400);
+    return jsonResponse(
+      { ok: false, error: "リクエストの形式が正しくありません。" },
+      400,
+    );
   }
 
   if (!body.idToken) {
-    return jsonResponse({ ok: false, error: '認証に失敗しました。LINEアプリ内から開き直してください。' }, 401);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "認証に失敗しました。LINEアプリ内から開き直してください。",
+      },
+      401,
+    );
   }
 
   const verifiedUserId = await verifyLiffIdToken(body.idToken, env);
   if (!verifiedUserId) {
-    return jsonResponse({ ok: false, error: '認証に失敗しました。LINEアプリ内から開き直してください。' }, 401);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "認証に失敗しました。LINEアプリ内から開き直してください。",
+      },
+      401,
+    );
   }
 
   const user = await findLinkedUser(verifiedUserId, env, headers);
   if (!user) {
-    return jsonResponse({ ok: false, error: '利用者が見つかりません。施設にお問い合わせください。' }, 404);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "利用者が見つかりません。施設にお問い合わせください。",
+      },
+      404,
+    );
   }
   if (!user.user_name?.trim()) {
-    return jsonResponse({ ok: false, error: '利用者情報が正しくありません。施設にお問い合わせください。' }, 500);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "利用者情報が正しくありません。施設にお問い合わせください。",
+      },
+      500,
+    );
   }
 
-  if (body.action === 'list') {
+  if (body.action === "list") {
     return handleListOwnCancellations(user, env, headers);
   }
-  if (body.action === 'withdraw') {
+  if (body.action === "withdraw") {
     return handleWithdrawCancellation(body, user, verifiedUserId, env, headers);
   }
   return handleSubmitCancellation(body, user, verifiedUserId, env, headers);
@@ -343,15 +398,22 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
 
 type OwnCancellation = { id: string; date: string; reason: string | null };
 
-async function handleListOwnCancellations(user: LinkedUser, env: Env, headers: SupabaseHeaders): Promise<Response> {
+async function handleListOwnCancellations(
+  user: LinkedUser,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<Response> {
   const today = getTodayDateJST();
   const res = await supabaseFetch(
     env,
     `cancellations?family_id=eq.${user.id}&date=gte.${today}&select=id,date,reason&order=date.asc`,
-    { method: 'GET', headers }
+    { method: "GET", headers },
   );
   if (!res.ok) {
-    return jsonResponse({ ok: false, error: '一覧の取得に失敗しました。' }, 500);
+    return jsonResponse(
+      { ok: false, error: "一覧の取得に失敗しました。" },
+      500,
+    );
   }
   const cancellations = (await res.json()) as OwnCancellation[];
   return jsonResponse({ ok: true, cancellations });
@@ -362,44 +424,53 @@ async function handleWithdrawCancellation(
   user: LinkedUser,
   verifiedUserId: string,
   env: Env,
-  headers: SupabaseHeaders
+  headers: SupabaseHeaders,
 ): Promise<Response> {
-  const id = typeof body.id === 'string' ? body.id : '';
+  const id = typeof body.id === "string" ? body.id : "";
   if (!id) {
-    return jsonResponse({ ok: false, error: '対象が指定されていません。' }, 400);
+    return jsonResponse(
+      { ok: false, error: "対象が指定されていません。" },
+      400,
+    );
   }
 
   // family_idも条件に含め、他の利用者のキャンセルを取り消せないようにする
   const res = await supabaseFetch(
     env,
     `cancellations?id=eq.${encodeURIComponent(id)}&family_id=eq.${user.id}`,
-    { method: 'DELETE', headers: { ...headers, Prefer: 'return=representation' } }
+    {
+      method: "DELETE",
+      headers: { ...headers, Prefer: "return=representation" },
+    },
   );
   if (!res.ok) {
-    return jsonResponse({ ok: false, error: '取り消しに失敗しました。' }, 500);
+    return jsonResponse({ ok: false, error: "取り消しに失敗しました。" }, 500);
   }
   const deleted = (await res.json()) as { date: string }[];
   if (!Array.isArray(deleted) || deleted.length === 0) {
-    return jsonResponse({ ok: false, error: '対象のキャンセルが見つかりません。' }, 404);
+    return jsonResponse(
+      { ok: false, error: "対象のキャンセルが見つかりません。" },
+      404,
+    );
   }
 
   const noticeMessage = `${user.user_name}さんの${formatDateJa(deleted[0].date)}のキャンセルを取り消しました。`;
-  const pushRes = await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
+  const pushRes = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${env.LINE_TOKEN}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       to: verifiedUserId,
-      messages: [{ type: 'text', text: noticeMessage }],
+      messages: [{ type: "text", text: noticeMessage }],
     }),
   });
 
   const pushErrorText = pushRes.ok ? null : await pushRes.text();
   await writeLog(env, headers, {
     family_id: user.id,
-    event_type: 'cancel_form_withdraw_notice',
+    event_type: "cancel_form_withdraw_notice",
     message: noticeMessage,
     success: pushRes.ok,
     error_message: pushErrorText,
@@ -414,47 +485,67 @@ async function handleSubmitCancellation(
   user: LinkedUser,
   verifiedUserId: string,
   env: Env,
-  headers: SupabaseHeaders
+  headers: SupabaseHeaders,
 ): Promise<Response> {
   const { date, reason, detail } = body;
 
   if (!date || !isValidCancelableDate(date)) {
-    return jsonResponse({ ok: false, error: '日付を正しく指定してください。' }, 400);
+    return jsonResponse(
+      { ok: false, error: "日付を正しく指定してください。" },
+      400,
+    );
   }
   if (!isValidCancelReason(reason)) {
-    return jsonResponse({ ok: false, error: '理由を選択してください。' }, 400);
+    return jsonResponse({ ok: false, error: "理由を選択してください。" }, 400);
   }
 
-  const trimmedDetail = typeof detail === 'string' ? detail.trim().slice(0, CANCEL_DETAIL_MAX_LENGTH) : '';
-  const finalReason = reason === OTHER_REASON && trimmedDetail ? trimmedDetail : reason;
+  const trimmedDetail =
+    typeof detail === "string"
+      ? detail.trim().slice(0, CANCEL_DETAIL_MAX_LENGTH)
+      : "";
+  const finalReason =
+    reason === OTHER_REASON && trimmedDetail ? trimmedDetail : reason;
 
-  const cancelRes = await supabaseFetch(env, 'cancellations?on_conflict=family_id,date', {
-    method: 'POST',
-    headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ family_id: user.id, date, reason: finalReason }),
-  });
+  const cancelRes = await supabaseFetch(
+    env,
+    "cancellations?on_conflict=family_id,date",
+    {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({ family_id: user.id, date, reason: finalReason }),
+    },
+  );
 
   if (!cancelRes.ok) {
-    return jsonResponse({ ok: false, error: 'キャンセルの受付に失敗しました。施設にお問い合わせください。' }, 500);
+    return jsonResponse(
+      {
+        ok: false,
+        error: "キャンセルの受付に失敗しました。施設にお問い合わせください。",
+      },
+      500,
+    );
   }
 
   const noticeMessage = `${user.user_name}さんの${formatDateJa(date)}のキャンセル（理由：${finalReason}）を承りました。\n施設に申し送りいたします。`;
-  const pushRes = await fetch('https://api.line.me/v2/bot/message/push', {
-    method: 'POST',
+  const pushRes = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${env.LINE_TOKEN}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       to: verifiedUserId,
-      messages: [{ type: 'text', text: noticeMessage }],
+      messages: [{ type: "text", text: noticeMessage }],
     }),
   });
 
   const pushErrorText = pushRes.ok ? null : await pushRes.text();
   await writeLog(env, headers, {
     family_id: user.id,
-    event_type: 'cancel_form_notice',
+    event_type: "cancel_form_notice",
     message: noticeMessage,
     success: pushRes.ok,
     error_message: pushErrorText,

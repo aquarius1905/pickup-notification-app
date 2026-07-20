@@ -14,7 +14,9 @@ const lineToken = process.env.LINE_TOKEN;
 const liffId = process.env.LINE_LIFF_ID;
 
 if (!lineToken || !liffId) {
-  console.error("環境変数 LINE_TOKEN と LINE_LIFF_ID が必要です（wranglerに設定したものと同じ値）。");
+  console.error(
+    "環境変数 LINE_TOKEN と LINE_LIFF_ID が必要です（wranglerに設定したものと同じ値）。",
+  );
   process.exit(1);
 }
 
@@ -45,18 +47,27 @@ async function lineFetch(url, init) {
 
 const createRes = await lineFetch("https://api.line.me/v2/bot/richmenu", {
   method: "POST",
-  headers: { Authorization: `Bearer ${lineToken}`, "Content-Type": "application/json" },
+  headers: {
+    Authorization: `Bearer ${lineToken}`,
+    "Content-Type": "application/json",
+  },
   body: JSON.stringify(richMenuBody),
 });
 const { richMenuId } = await createRes.json();
 console.log(`richMenuId: ${richMenuId}`);
 
 const image = await readFile(imagePath);
-await lineFetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
-  method: "POST",
-  headers: { Authorization: `Bearer ${lineToken}`, "Content-Type": "image/png" },
-  body: image,
-});
+await lineFetch(
+  `https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${lineToken}`,
+      "Content-Type": "image/png",
+    },
+    body: image,
+  },
+);
 console.log("画像をアップロードしました");
 
 await lineFetch(`https://api.line.me/v2/bot/user/all/richmenu/${richMenuId}`, {

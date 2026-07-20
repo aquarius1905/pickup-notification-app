@@ -25,7 +25,9 @@ if (!workerUrl || !fakeUserId || !text) {
 }
 
 if (!channelSecret) {
-  console.error("環境変数 LINE_CHANNEL_SECRET が必要です（wranglerに設定したものと同じ値）。");
+  console.error(
+    "環境変数 LINE_CHANNEL_SECRET が必要です（wranglerに設定したものと同じ値）。",
+  );
   process.exit(1);
 }
 
@@ -40,7 +42,9 @@ const body = JSON.stringify({
   ],
 });
 
-const signature = createHmac("sha256", channelSecret).update(body).digest("base64");
+const signature = createHmac("sha256", channelSecret)
+  .update(body)
+  .digest("base64");
 
 const res = await fetch(`${workerUrl.replace(/\/$/, "")}/webhook`, {
   method: "POST",
