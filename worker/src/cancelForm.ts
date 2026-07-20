@@ -58,6 +58,13 @@ export function handleCancelFormPage(env: Env): Response {
   .list-item .info { font-size: 14px; }
   .list-item .info .reason { color: #666; margin-left: 8px; }
   .withdraw-btn { font-size: 13px; padding: 8px 12px; border: 1px solid #dc2626; border-radius: 6px; background: #fff; color: #dc2626; white-space: nowrap; }
+  .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
+  .confirm-box { background: #fff; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; box-sizing: border-box; }
+  .confirm-box p { font-size: 15px; color: #111; margin: 0 0 20px; text-align: center; }
+  .confirm-buttons { display: flex; gap: 8px; }
+  .confirm-btn { flex: 1; font-size: 15px; padding: 12px; border-radius: 8px; border: none; }
+  .confirm-btn-cancel { background: #eee; color: #333; }
+  .confirm-btn-ok { background: #dc2626; color: #fff; }
 </style>
 </head>
 <body>
@@ -77,8 +84,38 @@ export function handleCancelFormPage(env: Env): Response {
   <button id="submit" disabled>送信する</button>
   <div id="message"></div>
 
+  <div id="confirmOverlay" class="confirm-overlay">
+    <div class="confirm-box">
+      <p id="confirmText"></p>
+      <div class="confirm-buttons">
+        <button id="confirmCancel" class="confirm-btn confirm-btn-cancel">やめる</button>
+        <button id="confirmOk" class="confirm-btn confirm-btn-ok">取り消す</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
+    function showConfirm(message) {
+      return new Promise(function (resolve) {
+        var overlay = document.getElementById('confirmOverlay');
+        var okBtn = document.getElementById('confirmOk');
+        var cancelBtn = document.getElementById('confirmCancel');
+        document.getElementById('confirmText').textContent = message;
+        overlay.style.display = 'flex';
+        function cleanup(result) {
+          overlay.style.display = 'none';
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          resolve(result);
+        }
+        function onOk() { cleanup(true); }
+        function onCancel() { cleanup(false); }
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+      });
+    }
+
     var selectedReason = null;
     var detailInput = document.getElementById('detail');
     var reasonButtons = document.querySelectorAll('.reason-btn');
@@ -134,26 +171,28 @@ export function handleCancelFormPage(env: Env): Response {
         btn.className = 'withdraw-btn';
         btn.textContent = '取り消す';
         btn.addEventListener('click', function () {
-          if (!confirm(formatDateJa(c.date) + 'のキャンセルを取り消しますか？')) return;
-          btn.disabled = true;
-          var idToken = liff.getIDToken();
-          if (!idToken) {
-            messageEl.textContent = 'LINEアプリ内でこの画面を開いてください。';
-            return;
-          }
-          callCancelForm({ action: 'withdraw', idToken: idToken, id: c.id })
-            .then(function (data) {
-              if (data.ok) {
-                loadList();
-              } else {
-                messageEl.textContent = data.error || '取り消しに失敗しました。';
+          showConfirm(formatDateJa(c.date) + 'のキャンセルを取り消しますか？').then(function (confirmed) {
+            if (!confirmed) return;
+            btn.disabled = true;
+            var idToken = liff.getIDToken();
+            if (!idToken) {
+              messageEl.textContent = 'LINEアプリ内でこの画面を開いてください。';
+              return;
+            }
+            callCancelForm({ action: 'withdraw', idToken: idToken, id: c.id })
+              .then(function (data) {
+                if (data.ok) {
+                  loadList();
+                } else {
+                  messageEl.textContent = data.error || '取り消しに失敗しました。';
+                  btn.disabled = false;
+                }
+              })
+              .catch(function () {
+                messageEl.textContent = '取り消しに失敗しました。通信状態をご確認ください。';
                 btn.disabled = false;
-              }
-            })
-            .catch(function () {
-              messageEl.textContent = '取り消しに失敗しました。通信状態をご確認ください。';
-              btn.disabled = false;
-            });
+              });
+          });
         });
 
         item.appendChild(info);
@@ -297,7 +336,7 @@ export async function handleCancelFormSubmit(request: Request, env: Env, headers
     return handleListOwnCancellations(user, env, headers);
   }
   if (body.action === 'withdraw') {
-    return handleWithdrawCancellation(body, user, env, headers);
+    return handleWithdrawCancellation(body, user, verifiedUserId, env, headers);
   }
   return handleSubmitCancellation(body, user, verifiedUserId, env, headers);
 }
@@ -321,6 +360,7 @@ async function handleListOwnCancellations(user: LinkedUser, env: Env, headers: S
 async function handleWithdrawCancellation(
   body: CancelFormBody,
   user: LinkedUser,
+  verifiedUserId: string,
   env: Env,
   headers: SupabaseHeaders
 ): Promise<Response> {
@@ -338,10 +378,34 @@ async function handleWithdrawCancellation(
   if (!res.ok) {
     return jsonResponse({ ok: false, error: '取り消しに失敗しました。' }, 500);
   }
-  const deleted = (await res.json()) as unknown;
+  const deleted = (await res.json()) as { date: string }[];
   if (!Array.isArray(deleted) || deleted.length === 0) {
     return jsonResponse({ ok: false, error: '対象のキャンセルが見つかりません。' }, 404);
   }
+
+  const noticeMessage = `${user.user_name}さんの${formatDateJa(deleted[0].date)}のキャンセルを取り消しました。`;
+  const pushRes = await fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.LINE_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      to: verifiedUserId,
+      messages: [{ type: 'text', text: noticeMessage }],
+    }),
+  });
+
+  const pushErrorText = pushRes.ok ? null : await pushRes.text();
+  await writeLog(env, headers, {
+    family_id: user.id,
+    event_type: 'cancel_form_withdraw_notice',
+    message: noticeMessage,
+    success: pushRes.ok,
+    error_message: pushErrorText,
+    notify_minutes: null,
+  });
+
   return jsonResponse({ ok: true });
 }
 
