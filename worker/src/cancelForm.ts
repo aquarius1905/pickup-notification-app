@@ -150,6 +150,21 @@ export function handleCancelFormPage(env: Env): Response {
 
     var messageEl = document.getElementById('message');
     var listEl = document.getElementById('list');
+    var messageClearTimer = null;
+
+    function setMessage(text, autoClearMs) {
+      messageEl.textContent = text;
+      if (messageClearTimer) {
+        clearTimeout(messageClearTimer);
+        messageClearTimer = null;
+      }
+      if (autoClearMs) {
+        messageClearTimer = setTimeout(function () {
+          messageEl.textContent = '';
+          messageClearTimer = null;
+        }, autoClearMs);
+      }
+    }
 
     function callCancelForm(payload) {
       return fetch('/cancel-form', {
@@ -259,7 +274,7 @@ export function handleCancelFormPage(env: Env): Response {
       callCancelForm({ action: 'submit', idToken: idToken, date: dateInput.value, reason: selectedReason, detail: detailInput.value })
         .then(function (data) {
           if (data.ok) {
-            messageEl.textContent = 'キャンセルを受け付けました。';
+            setMessage('キャンセルを受け付けました。', 10000);
             dateInput.value = '';
             reasonButtons.forEach(function (b) { b.classList.remove('selected'); });
             selectedReason = null;
