@@ -77,6 +77,8 @@ export function handleCancelFormPage(env: Env): Response {
   .confirm-btn { flex: 1; font-size: 15px; padding: 12px; border-radius: 8px; border: none; }
   .confirm-btn-cancel { background: #eee; color: #333; }
   .confirm-btn-ok { background: #06c755; color: #fff; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: rgba(0,0,0,0.8); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; max-width: calc(100% - 32px); text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -105,6 +107,8 @@ export function handleCancelFormPage(env: Env): Response {
       </div>
     </div>
   </div>
+
+  <div id="toast" class="toast"></div>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
@@ -150,20 +154,16 @@ export function handleCancelFormPage(env: Env): Response {
 
     var messageEl = document.getElementById('message');
     var listEl = document.getElementById('list');
-    var messageClearTimer = null;
+    var toastEl = document.getElementById('toast');
+    var toastTimer = null;
 
-    function setMessage(text, autoClearMs) {
-      messageEl.textContent = text;
-      if (messageClearTimer) {
-        clearTimeout(messageClearTimer);
-        messageClearTimer = null;
-      }
-      if (autoClearMs) {
-        messageClearTimer = setTimeout(function () {
-          messageEl.textContent = '';
-          messageClearTimer = null;
-        }, autoClearMs);
-      }
+    function showToast(text) {
+      toastEl.textContent = text;
+      toastEl.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () {
+        toastEl.classList.remove('show');
+      }, 3000);
     }
 
     function callCancelForm(payload) {
@@ -209,6 +209,7 @@ export function handleCancelFormPage(env: Env): Response {
             callCancelForm({ action: 'withdraw', idToken: idToken, id: c.id })
               .then(function (data) {
                 if (data.ok) {
+                  showToast('キャンセルを取り消しました。');
                   loadList();
                 } else {
                   messageEl.textContent = data.error || '取り消しに失敗しました。';
@@ -274,7 +275,8 @@ export function handleCancelFormPage(env: Env): Response {
       callCancelForm({ action: 'submit', idToken: idToken, date: dateInput.value, reason: selectedReason, detail: detailInput.value })
         .then(function (data) {
           if (data.ok) {
-            setMessage('キャンセルを受け付けました。', 10000);
+            messageEl.textContent = '';
+            showToast('キャンセルを受け付けました。');
             dateInput.value = '';
             reasonButtons.forEach(function (b) { b.classList.remove('selected'); });
             selectedReason = null;
