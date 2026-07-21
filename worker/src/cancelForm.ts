@@ -1,12 +1,18 @@
 import type { Env, SupabaseHeaders } from "./index";
 import {
+  findFamilyByLineUserId,
   getTodayDateJST,
   jsonResponse,
+  pushLineMessage,
   supabaseFetch,
   writeLog,
 } from "./index";
 
 // --- キャンセル管理フォーム（LIFF）：当日・事前を問わず、登録と取り消しをここで扱う ---
+
+type LinkedUser = NonNullable<
+  Awaited<ReturnType<typeof findFamilyByLineUserId>>
+>;
 
 const CANCEL_REASONS = ["通院", "体調不良", "その他"] as const;
 const OTHER_REASON = "その他";
@@ -312,8 +318,6 @@ type CancelFormBody = {
   id?: string;
 };
 
-type LinkedUser = { id: string; user_name: string };
-
 /** LIFFのIDトークンをLINEに照会し、検証済みのuserIdを返す（クライアント申告値は信用しない） */
 async function verifyLiffIdToken(
   idToken: string,
@@ -330,22 +334,6 @@ async function verifyLiffIdToken(
   if (!res.ok) return null;
   const data = (await res.json()) as { sub?: string };
   return data.sub ?? null;
-}
-
-async function findLinkedUser(
-  verifiedUserId: string,
-  env: Env,
-  headers: SupabaseHeaders,
-): Promise<LinkedUser | null> {
-  const linkedRes = await supabaseFetch(
-    env,
-    `families?line_user_id=eq.${encodeURIComponent(verifiedUserId)}&is_active=eq.true&select=id,user_name&limit=1`,
-    { method: "GET", headers },
-  );
-  if (!linkedRes.ok) return null;
-  const linkedUsers = (await linkedRes.json()) as unknown;
-  if (!Array.isArray(linkedUsers) || linkedUsers.length === 0) return null;
-  return linkedUsers[0] as LinkedUser;
 }
 
 export async function handleCancelFormSubmit(
@@ -384,7 +372,7 @@ export async function handleCancelFormSubmit(
     );
   }
 
-  const user = await findLinkedUser(verifiedUserId, env, headers);
+  const user = await findFamilyByLineUserId(verifiedUserId, env, headers);
   if (!user) {
     return jsonResponse(
       {
@@ -472,17 +460,7 @@ async function handleWithdrawCancellation(
   }
 
   const noticeMessage = `${user.user_name}さんの${formatDateJa(deleted[0].date)}のキャンセルを取り消しました。`;
-  const pushRes = await fetch("https://api.line.me/v2/bot/message/push", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.LINE_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to: verifiedUserId,
-      messages: [{ type: "text", text: noticeMessage }],
-    }),
-  });
+  const pushRes = await pushLineMessage(verifiedUserId, noticeMessage, env);
 
   const pushErrorText = pushRes.ok ? null : await pushRes.text();
   await writeLog(env, headers, {
@@ -547,17 +525,7 @@ async function handleSubmitCancellation(
   }
 
   const noticeMessage = `${user.user_name}さんの${formatDateJa(date)}のキャンセル（理由：${finalReason}）を承りました。\n施設に申し送りいたします。`;
-  const pushRes = await fetch("https://api.line.me/v2/bot/message/push", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.LINE_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to: verifiedUserId,
-      messages: [{ type: "text", text: noticeMessage }],
-    }),
-  });
+  const pushRes = await pushLineMessage(verifiedUserId, noticeMessage, env);
 
   const pushErrorText = pushRes.ok ? null : await pushRes.text();
   await writeLog(env, headers, {

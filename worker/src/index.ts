@@ -196,6 +196,10 @@ function normalizeSchedule(input: unknown): Schedule {
   return result;
 }
 
+function normalizeNotifyMinutes(input: unknown): 5 | 10 {
+  return input === 5 || input === 10 ? input : 10;
+}
+
 function generateInviteCode(): string {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   const buf = new Uint8Array(6);
@@ -218,6 +222,23 @@ async function authenticateFacility(
     return null;
   }
   return facilities[0] as Facility;
+}
+
+/** line_user_idから連携済みの利用者を探す。見つからない・通信失敗時はnull */
+export async function findFamilyByLineUserId(
+  lineUserId: string,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<{ id: string; user_name: string } | null> {
+  const res = await supabaseFetch(
+    env,
+    `families?line_user_id=eq.${encodeURIComponent(lineUserId)}&is_active=eq.true&select=id,user_name&limit=1`,
+    { method: "GET", headers },
+  );
+  if (!res.ok) return null;
+  const rows = (await res.json()) as unknown;
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return rows[0] as { id: string; user_name: string };
 }
 
 const FACILITY_CODE_RATE_LIMIT = 20;
@@ -564,17 +585,7 @@ async function handleNotify(
     return jsonResponse({ ok: true, messageSent: message, lineBody: null });
   }
 
-  const lineRes = await fetch("https://api.line.me/v2/bot/message/push", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.LINE_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to: user.line_user_id,
-      messages: [{ type: "text", text: message }],
-    }),
-  });
+  const lineRes = await pushLineMessage(user.line_user_id, message, env);
 
   const lineResultText = await lineRes.text();
 
@@ -614,8 +625,7 @@ async function handleCreate(
     facility_id: facilityId,
     invite_code: generateInviteCode(),
     schedule: normalizeSchedule(schedule),
-    notify_minutes:
-      notifyMinutes === 5 || notifyMinutes === 10 ? notifyMinutes : 10,
+    notify_minutes: normalizeNotifyMinutes(notifyMinutes),
   };
 
   const res = await supabaseFetch(env, "families", {
@@ -652,8 +662,7 @@ async function handleUpdate(
   if (lineUserId !== undefined) updates.line_user_id = lineUserId || "";
   if (schedule !== undefined) updates.schedule = normalizeSchedule(schedule);
   if (notifyMinutes !== undefined) {
-    updates.notify_minutes =
-      notifyMinutes === 5 || notifyMinutes === 10 ? notifyMinutes : 10;
+    updates.notify_minutes = normalizeNotifyMinutes(notifyMinutes);
   }
 
   if (Object.keys(updates).length === 0) {
@@ -799,6 +808,24 @@ async function replyLineMessage(
   });
 }
 
+export async function pushLineMessage(
+  to: string,
+  text: string,
+  env: Env,
+): Promise<Response> {
+  return fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.LINE_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to,
+      messages: [{ type: "text", text }],
+    }),
+  });
+}
+
 type LineEvent = {
   type: string;
   replyToken: string;
@@ -832,78 +859,99 @@ async function handleLineWebhook(
 
   for (const event of events) {
     if (event.type === "follow") {
-      // 友達追加：使い方を案内
-      await replyLineMessage(
-        event.replyToken,
-        "友だち追加ありがとうございます！\n施設からお伝えされた招待コード（6文字）をこのトークに送信してください。",
-        env,
-      );
+      await handleFollowEvent(event.replyToken, env);
     } else if (event.type === "message" && event.message?.type === "text") {
-      const rawText = event.message.text.trim();
-      const lineUserId = event.source?.userId;
-
-      if (!lineUserId) continue;
-
-      // 連携済みの利用者かどうか確認
-      const linkedRes = await supabaseFetch(
+      await handleTextMessageEvent(
+        event.message.text,
+        event.source?.userId,
+        event.replyToken,
         env,
-        `families?line_user_id=eq.${encodeURIComponent(lineUserId)}&is_active=eq.true&select=id,user_name&limit=1`,
-        { method: "GET", headers },
+        headers,
       );
-      const linkedUsers = (await linkedRes.json()) as unknown;
-
-      if (Array.isArray(linkedUsers) && linkedUsers.length > 0) {
-        // 当日・事前を問わず、キャンセルの登録・取り消しは下部メニューの「キャンセル」に統一している
-        await replyLineMessage(
-          event.replyToken,
-          "送迎のキャンセル・取り消しは、トーク画面下のメニューの「キャンセル」からお手続きください。",
-          env,
-        );
-        continue;
-      }
-
-      // 招待コードで利用者を検索（未連携の場合）
-      const text = rawText.toUpperCase();
-      const familyRes = await supabaseFetch(
-        env,
-        `families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,user_name`,
-        { method: "GET", headers },
-      );
-      const users = (await familyRes.json()) as unknown;
-
-      if (!Array.isArray(users) || users.length === 0) {
-        await replyLineMessage(
-          event.replyToken,
-          "招待コードが見つかりません。\nコードをご確認のうえ、もう一度送信してください。",
-          env,
-        );
-        continue;
-      }
-
-      const user = users[0] as { id: string; user_name: string };
-
-      // line_user_idを紐付け
-      const updateRes = await supabaseFetch(env, `families?id=eq.${user.id}`, {
-        method: "PATCH",
-        headers: { ...headers, Prefer: "return=minimal" },
-        body: JSON.stringify({ line_user_id: lineUserId }),
-      });
-
-      if (updateRes.ok) {
-        await replyLineMessage(
-          event.replyToken,
-          `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。\nお休みする場合は、当日・事前を問わず下のメニューの「キャンセル」からお知らせください。`,
-          env,
-        );
-      } else {
-        await replyLineMessage(
-          event.replyToken,
-          "登録に失敗しました。施設にお問い合わせください。",
-          env,
-        );
-      }
     }
   }
 
   return new Response("OK", { status: 200 });
+}
+
+/** 友達追加：使い方を案内 */
+async function handleFollowEvent(replyToken: string, env: Env): Promise<void> {
+  await replyLineMessage(
+    replyToken,
+    "友だち追加ありがとうございます！\n施設からお伝えされた招待コード（6文字）をこのトークに送信してください。",
+    env,
+  );
+}
+
+async function handleTextMessageEvent(
+  messageText: string,
+  lineUserId: string | undefined,
+  replyToken: string,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<void> {
+  const rawText = messageText.trim();
+  if (!lineUserId) return;
+
+  // 連携済みの利用者かどうか確認
+  const linkedUser = await findFamilyByLineUserId(lineUserId, env, headers);
+  if (linkedUser) {
+    // 当日・事前を問わず、キャンセルの登録・取り消しは下部メニューの「キャンセル」に統一している
+    await replyLineMessage(
+      replyToken,
+      "送迎のキャンセル・取り消しは、トーク画面下のメニューの「キャンセル」からお手続きください。",
+      env,
+    );
+    return;
+  }
+
+  await handleInviteCodeMessage(rawText, lineUserId, replyToken, env, headers);
+}
+
+/** 未連携ユーザーからのメッセージを招待コードとして照合し、一致すればline_user_idを紐付ける */
+async function handleInviteCodeMessage(
+  rawText: string,
+  lineUserId: string,
+  replyToken: string,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<void> {
+  const text = rawText.toUpperCase();
+  const familyRes = await supabaseFetch(
+    env,
+    `families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,user_name`,
+    { method: "GET", headers },
+  );
+  const users = (await familyRes.json()) as unknown;
+
+  if (!Array.isArray(users) || users.length === 0) {
+    await replyLineMessage(
+      replyToken,
+      "招待コードが見つかりません。\nコードをご確認のうえ、もう一度送信してください。",
+      env,
+    );
+    return;
+  }
+
+  const user = users[0] as { id: string; user_name: string };
+
+  const updateRes = await supabaseFetch(env, `families?id=eq.${user.id}`, {
+    method: "PATCH",
+    headers: { ...headers, Prefer: "return=minimal" },
+    body: JSON.stringify({ line_user_id: lineUserId }),
+  });
+
+  if (updateRes.ok) {
+    await replyLineMessage(
+      replyToken,
+      `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。\nお休みする場合は、当日・事前を問わず下のメニューの「キャンセル」からお知らせください。`,
+      env,
+    );
+  } else {
+    await replyLineMessage(
+      replyToken,
+      "登録に失敗しました。施設にお問い合わせください。",
+      env,
+    );
+  }
 }
