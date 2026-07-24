@@ -20,6 +20,10 @@ Google Docs
 
 モニター期間中は更新が入りやすいでしょうから、Google Docsを原本にして、配布用としてPDFを出力する運用が扱いやすい。
 
+## URL
+
+https://docs.google.com/document/d/1Sm1awuFpttnb-HNm9Utt4viePGJhi4CeFMyLvNtR_7Q/edit?usp=sharing
+
 ## マニュアル構成
 
 1. はじめに
