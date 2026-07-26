@@ -53,6 +53,12 @@ https://docs.google.com/document/d/1Sm1awuFpttnb-HNm9Utt4viePGJhi4CeFMyLvNtR_7Q/
 
 ## 必要なスクショ
 
+□ メールのリンク
+
+□ 提供元不明のアプリの許可画面
+
+□ インストール確認画面
+
 □ ホーム
 
 □ 利用者登録
