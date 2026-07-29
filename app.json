@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "com.aquarius1905.pickupnotification",
+      "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
