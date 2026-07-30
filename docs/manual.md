@@ -31,7 +31,7 @@ https://docs.google.com/document/d/1Sm1awuFpttnb-HNm9Utt4viePGJhi4CeFMyLvNtR_7Q/
    - 利用に必要なもの
 2. 初期設定
    - アプリのインストール
-   - 招待コードの登録
+   - 施設コードの登録
 3. 基本操作
    - 利用者の登録
    - 通所予定の登録・編集
