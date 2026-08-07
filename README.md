@@ -71,8 +71,10 @@ LINE_TOKEN=xxxx LINE_LIFF_ID=yyyy npm run setup-rich-menu
 ```bash
 npx supabase login
 npx supabase link --project-ref <SupabaseのプロジェクトRef>
-# 001〜011は既に手動適用済みのため、適用済みとして記録する（実際にはDBに反映しない）
-npx supabase migration repair --status applied <各マイグレーションのtimestamp>
+# リンク直後は npx supabase migration list でlocal/remoteの差分を確認する。
+# 本番へ手動で適用済み（remote側に記録がない）のマイグレーションがあれば、
+# 適用済みとして記録する（実際にはDBに反映しない）
+npx supabase migration repair --status applied <該当のtimestamp>
 ```
 
 また、GitHubリポジトリのSecretsに以下を設定する（Settings > Secrets and variables > Actions）。
