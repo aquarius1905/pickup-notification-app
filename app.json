@@ -52,7 +52,17 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      [
+        "@react-native-community/datetimepicker",
+        {
+          "android": {
+            "datePicker": {
+              "colorAccent": { "light": "#2563eb" },
+              "colorControlActivated": { "light": "#2563eb" }
+            }
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

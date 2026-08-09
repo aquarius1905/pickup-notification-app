@@ -187,6 +187,7 @@ export default function ScheduleScreen() {
                   mode="date"
                   display={Platform.OS === "ios" ? "inline" : "default"}
                   onChange={handleDateChange}
+                  accentColor={colors.primary}
                 />
               )}
             </>
