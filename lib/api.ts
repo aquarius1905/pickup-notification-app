@@ -60,7 +60,11 @@ export type UpcomingCancellation = {
 
 export type NotificationLog = {
   id: string;
-  event_type: "pickup_approaching" | "dropoff_approaching";
+  event_type:
+    | "pickup_approaching"
+    | "dropoff_approaching"
+    | "cancel_form_notice"
+    | "cancel_form_withdraw_notice";
   message: string;
   success: boolean;
   error_message: string | null;

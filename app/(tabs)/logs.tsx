@@ -46,7 +46,16 @@ function formatLogDate(isoString: string): string {
 }
 
 function getEventLabel(eventType: NotificationLog["event_type"]): string {
-  return eventType === "pickup_approaching" ? "お迎え通知" : "お送り通知";
+  switch (eventType) {
+    case "pickup_approaching":
+      return "お迎え通知";
+    case "cancel_form_notice":
+      return "キャンセル通知";
+    case "cancel_form_withdraw_notice":
+      return "キャンセル取消通知";
+    default:
+      return "お送り通知";
+  }
 }
 
 /** イベント種別と通知文の「あと◯分」を1行にまとめる（例: お送り通知（10分前・電話）） */
