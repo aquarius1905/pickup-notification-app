@@ -41,6 +41,9 @@ yarn-error.*
 # Claude Code
 .claude/
 
+# JetBrains IDE
+.idea/
+
 # typescript
 *.tsbuildinfo
 
