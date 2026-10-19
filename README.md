@@ -2,6 +2,11 @@
 
 通所介護事業所の職員が、利用者の送迎状況（出発・到着）をご家族のLINEに通知するアプリです。
 
+## リンク
+
+- [職員向けマニュアル](https://docs.google.com/document/d/1Sm1awuFpttnb-HNm9Utt4viePGJhi4CeFMyLvNtR_7Q/edit?usp=sharing)
+- [モニター施設募集フォーム](https://forms.gle/eKQ53u9m4PKbbyPM8)
+
 ## 構成
 
 ```
