@@ -63,7 +63,7 @@ export default function HomeScreen() {
     notifyApproaching,
     markComplete,
     notified,
-  } = useServiceUsers();
+  } = useServiceUsers({ autoRefresh: true });
   const [showAll, setShowAll] = useState(false);
   const [searchText, setSearchText] = useState("");
 

@@ -20,6 +20,7 @@ import { useServiceUsers } from "@/hooks/useServiceUsers";
 import { useUpcomingCancellations } from "@/hooks/useUpcomingCancellations";
 import type { ServiceUser, UpcomingCancellation, Weekday } from "@/lib/api";
 import { createCancellation, deleteCancellation } from "@/lib/api";
+import { emitTodayCancellation } from "@/lib/cancellationEvents";
 import { showErrorAlert } from "@/lib/error";
 import {
   filterAndSortByDay,
@@ -98,6 +99,12 @@ export default function ScheduleScreen() {
           reason,
           detail,
         );
+        if (isToday(selectedDateString)) {
+          emitTodayCancellation({
+            userId: cancelTarget.id,
+            canceledToday: true,
+          });
+        }
         Burnt.toast({
           title: `${cancelTarget.user_name}さんのキャンセルを登録しました`,
           preset: "done",
@@ -126,6 +133,12 @@ export default function ScheduleScreen() {
             onPress: async () => {
               try {
                 await deleteCancellation(cancellation.id);
+                if (isToday(cancellation.date)) {
+                  emitTodayCancellation({
+                    userId: cancellation.family_id,
+                    canceledToday: false,
+                  });
+                }
                 Burnt.toast({
                   title: `${userName}さんのキャンセルを取り消しました`,
                   preset: "done",

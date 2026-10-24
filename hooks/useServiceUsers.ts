@@ -1,19 +1,28 @@
 import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { Alert } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, AppState } from "react-native";
 
 import { useGuardedLoad } from "@/hooks/useGuardedLoad";
 import { fetchServiceUsers, recordNotifyPhase } from "@/lib/api";
 import type { NotifyPhase, ServiceUser } from "@/lib/api";
+import { subscribeTodayCancellation } from "@/lib/cancellationEvents";
 import { getErrorMessage, showErrorAlert } from "@/lib/error";
 
 export type { NotifyPhase };
 
 function noop(): void {}
 
-export function useServiceUsers() {
+/** 送迎通知タブを開いている間、ご家族のLINEキャンセルなどを拾うために再取得する間隔 */
+const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
+
+type Options = {
+  /** 画面表示中に定期的に、またアプリが前面に戻った時に、一覧を裏で再取得する */
+  autoRefresh?: boolean;
+};
+
+export function useServiceUsers({ autoRefresh = false }: Options = {}) {
   const [users, setUsers] = useState<ServiceUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [fetching, setFetching] = useState(true);
@@ -34,15 +43,27 @@ export function useServiceUsers() {
 
   const runGuarded = useGuardedLoad();
 
+  // 自動の再取得（loadSilently）の結果を捨てるための世代番号。
+  // 手動の取得・通知の送信・楽観更新・キャンセルイベントのたびに進め、
+  // 自動の再取得は開始時の値と完了時の値が違えば結果を反映しない。
+  // （送信前に始まった取得の結果が後から返り、送信直後の表示を古い値で上書きして
+  // 「未通知」に戻る → 職員が再度押してLINEが二重送信される、といった事態を防ぐ）
+  const silentLoadGenerationRef = useRef(0);
+  const invalidateSilentLoads = useCallback(() => {
+    silentLoadGenerationRef.current += 1;
+  }, []);
+
   const load = useCallback(
-    (setLoadingFlag: (v: boolean) => void) =>
-      runGuarded(
+    (setLoadingFlag: (v: boolean) => void) => {
+      invalidateSilentLoads();
+      return runGuarded(
         () => fetchServiceUsers(),
         setLoadingFlag,
         setUsers,
         showErrorAlert,
-      ),
-    [runGuarded],
+      );
+    },
+    [runGuarded, invalidateSilentLoads],
   );
 
   const refresh = useCallback(() => load(setRefreshing), [load]);
@@ -63,14 +84,57 @@ export function useServiceUsers() {
     }, [load]),
   );
 
-  // サーバーへの反映を待たずに一覧上の表示を即時更新する（次のフォーカス時にサーバー値で上書きされる）
+  // 自動の再取得は職員の操作と無関係に走るため、
+  // - 通信エラーでもアラートは出さない（電波の悪い場所で1分ごとに出続けるのを防ぐ。次回で回復する）
+  // - runGuardedを使わない（手動の取得の世代を進めて、引っ張って更新のスピナーが消えなくなるのを防ぐ）
+  // - 取得中に他の更新が入ったら、結果を捨てる（silentLoadGenerationRef を参照）
+  const loadSilently = useCallback(async () => {
+    const generation = silentLoadGenerationRef.current;
+    try {
+      const latest = await fetchServiceUsers();
+      if (generation === silentLoadGenerationRef.current) setUsers(latest);
+    } catch {
+      // 次回の再取得に任せる
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!autoRefresh) return;
+      const timer = setInterval(loadSilently, AUTO_REFRESH_INTERVAL_MS);
+      const subscription = AppState.addEventListener("change", (state) => {
+        if (state === "active") loadSilently();
+      });
+      return () => {
+        clearInterval(timer);
+        subscription.remove();
+      };
+    }, [autoRefresh, loadSilently]),
+  );
+
+  // 予定確認タブで今日分のキャンセルが登録・取り消しされたら、再取得を待たずにバッジを切り替える
+  useEffect(
+    () =>
+      subscribeTodayCancellation(({ userId, canceledToday }) => {
+        invalidateSilentLoads();
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId ? { ...u, canceled_today: canceledToday } : u,
+          ),
+        );
+      }),
+    [invalidateSilentLoads],
+  );
+
+  // 再取得の結果を待たずに一覧上の表示を即時更新する（次の再取得時にサーバー値で上書きされる）
   const setPhaseOptimistically = useCallback(
     (targetUser: string, phase: NotifyPhase) => {
+      invalidateSilentLoads();
       setUsers((prev) =>
         prev.map((u) => (u.id === targetUser ? { ...u, today_phase: phase } : u)),
       );
     },
-    [],
+    [invalidateSilentLoads],
   );
 
   // 「あと◯分」通知を送信し、*_approaching フェーズへ
@@ -112,6 +176,7 @@ export function useServiceUsers() {
         onPress: async () => {
           try {
             setSending(true);
+            invalidateSilentLoads();
             await recordNotifyPhase(targetId, nextPhase);
             setSelectedUser(null);
             Burnt.toast({ title: successToastTitle, preset: "done" });
@@ -127,7 +192,7 @@ export function useServiceUsers() {
         },
       },
     ]);
-  }, [selectedUser, notified, users, setPhaseOptimistically]);
+  }, [selectedUser, notified, users, setPhaseOptimistically, invalidateSilentLoads]);
 
   // お迎え済み / お送り済みを記録（LINE通知なし）
   const markComplete = useCallback(() => {
@@ -150,6 +215,7 @@ export function useServiceUsers() {
 
     setSelectedUser(null);
     setSending(true);
+    invalidateSilentLoads();
     recordNotifyPhase(targetId, nextPhase)
       .then(() => {
         setPhaseOptimistically(targetId, nextPhase);
@@ -163,7 +229,7 @@ export function useServiceUsers() {
         Alert.alert("記録に失敗しました", getErrorMessage(error));
       })
       .finally(() => setSending(false));
-  }, [selectedUser, notified, users, setPhaseOptimistically]);
+  }, [selectedUser, notified, users, setPhaseOptimistically, invalidateSilentLoads]);
 
   return {
     users,
