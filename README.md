@@ -40,6 +40,21 @@ cp .env.example .env  # 環境変数を設定
 npx expo start
 ```
 
+#### APKのビルド（動作確認・配布用）
+
+EASのローカルビルドで作成する。10〜20分ほどかかり、プロジェクト直下に `build-output.apk` が出力される（`*.apk` は `.gitignore` 済み）。
+
+```bash
+npx eas build --platform android --profile preview --local --output build-output.apk
+```
+
+事前に以下が必要。
+
+- **Java 17**: `.java-version` で指定済み。jenv の `export` プラグインが有効なら、このディレクトリで自動的に `JAVA_HOME` が切り替わる（`java -version` で確認）。
+- **`ANDROID_HOME`**: Android SDK の場所。`~/.zshrc` に `export ANDROID_HOME="$HOME/Library/Android/sdk"` を設定しておく。
+
+versionCode はEAS側で管理しており、ビルドのたびに自動で1つ増える（失敗したビルドでも増える）。DB・Workerの変更を含む場合は、マイグレーションとWorkerのデプロイを済ませてからビルドする。
+
 ### Worker
 
 ```bash
