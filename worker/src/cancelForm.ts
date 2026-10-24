@@ -28,8 +28,21 @@ function isValidCancelReason(
   );
 }
 
+/** 選択された理由と「その他」の詳細から保存用の理由を作る。不正な理由はnull */
+export function resolveCancelReason(
+  reason: unknown,
+  detail: unknown,
+): string | null {
+  if (!isValidCancelReason(reason)) return null;
+  const trimmedDetail =
+    typeof detail === "string"
+      ? detail.trim().slice(0, CANCEL_DETAIL_MAX_LENGTH)
+      : "";
+  return reason === OTHER_REASON && trimmedDetail ? trimmedDetail : reason;
+}
+
 /** 今日以降（当日含む）の日付か */
-function isValidCancelableDate(date: string): boolean {
+export function isValidCancelableDate(date: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   return date >= getTodayDateJST();
 }
@@ -490,16 +503,10 @@ async function handleSubmitCancellation(
       400,
     );
   }
-  if (!isValidCancelReason(reason)) {
+  const finalReason = resolveCancelReason(reason, detail);
+  if (!finalReason) {
     return jsonResponse({ ok: false, error: "理由を選択してください。" }, 400);
   }
-
-  const trimmedDetail =
-    typeof detail === "string"
-      ? detail.trim().slice(0, CANCEL_DETAIL_MAX_LENGTH)
-      : "";
-  const finalReason =
-    reason === OTHER_REASON && trimmedDetail ? trimmedDetail : reason;
 
   const cancelRes = await supabaseFetch(
     env,
@@ -510,7 +517,13 @@ async function handleSubmitCancellation(
         ...headers,
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify({ family_id: user.id, date, reason: finalReason }),
+      // 職員が登録済みの日をご家族が送り直した場合も、登録元をご家族に戻す
+      body: JSON.stringify({
+        family_id: user.id,
+        date,
+        reason: finalReason,
+        source: "family",
+      }),
     },
   );
 

@@ -1,8 +1,10 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Burnt from "burnt";
 import { useCallback, useMemo, useState } from "react";
 import type { TextStyle } from "react-native";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   RefreshControl,
@@ -13,7 +15,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { CancellationModal } from "@/components/CancellationModal";
 import type { ServiceUser, UpcomingCancellation, Weekday } from "@/lib/api";
+import { createCancellation, deleteCancellation } from "@/lib/api";
+import { showErrorAlert } from "@/lib/error";
 import { useServiceUsers } from "@/hooks/useServiceUsers";
 import { useUpcomingCancellations } from "@/hooks/useUpcomingCancellations";
 import {
@@ -67,14 +72,74 @@ export default function ScheduleScreen() {
     [selectedDate],
   );
 
-  const canceledUserIdsForSelectedDate = useMemo(
+  const cancellationsByUserForSelectedDate = useMemo(
     () =>
-      new Set(
+      new Map(
         cancellations
           .filter((c) => c.date === selectedDateString)
-          .map((c) => c.family_id),
+          .map((c) => [c.family_id, c]),
       ),
     [cancellations, selectedDateString],
+  );
+  // 過去日のキャンセルは登録・取り消しできない（Worker側も登録・取り消しとも今日以降のみ受け付ける）
+  const isSelectedDateEditable = selectedDateString >= getTodayString();
+
+  const [cancelTarget, setCancelTarget] = useState<ServiceUser | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmitCancellation = useCallback(
+    async (reason: string, detail: string) => {
+      if (!cancelTarget) return;
+      try {
+        setSubmitting(true);
+        await createCancellation(
+          cancelTarget.id,
+          selectedDateString,
+          reason,
+          detail,
+        );
+        Burnt.toast({
+          title: `${cancelTarget.user_name}さんのキャンセルを登録しました`,
+          preset: "done",
+        });
+        setCancelTarget(null);
+        refresh();
+      } catch (error) {
+        showErrorAlert(error);
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [cancelTarget, selectedDateString, refresh],
+  );
+
+  const confirmWithdraw = useCallback(
+    (cancellation: UpcomingCancellation, userName: string) => {
+      Alert.alert(
+        "取り消し確認",
+        `${userName}さんの${formatCancellationDate(cancellation.date)}のキャンセルを取り消しますか？`,
+        [
+          { text: "閉じる", style: "cancel" },
+          {
+            text: "取り消す",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await deleteCancellation(cancellation.id);
+                Burnt.toast({
+                  title: `${userName}さんのキャンセルを取り消しました`,
+                  preset: "done",
+                });
+                refresh();
+              } catch (error) {
+                showErrorAlert(error);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [refresh],
   );
 
   const usersForSelectedDate = useMemo(
@@ -135,26 +200,44 @@ export default function ScheduleScreen() {
           contentContainerStyle={styles.listContent}
           data={cancellations}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }: { item: UpcomingCancellation }) => (
-            <View style={styles.row}>
-              <View style={styles.rowHeader}>
-                <Text style={styles.userName}>
-                  {item.family?.user_name ?? "（不明な利用者）"}
+          renderItem={({ item }: { item: UpcomingCancellation }) => {
+            const userName = item.family?.user_name ?? "（不明な利用者）";
+            return (
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => confirmWithdraw(item, userName)}
+              >
+                <View style={styles.rowHeader}>
+                  <Text style={styles.userName}>{userName}</Text>
+                  {isToday(item.date) && (
+                    <Text style={styles.badge}>本日</Text>
+                  )}
+                </View>
+                <Text style={styles.date}>
+                  {formatCancellationDate(item.date)}
                 </Text>
-                {isToday(item.date) && (
-                  <Text style={styles.badge}>本日</Text>
+                {item.reason && (
+                  <Text style={styles.reason}>{item.reason}</Text>
                 )}
-              </View>
-              <Text style={styles.date}>{formatCancellationDate(item.date)}</Text>
-              {item.reason && <Text style={styles.reason}>{item.reason}</Text>}
-            </View>
-          )}
+                {item.source === "facility" && (
+                  <Text style={styles.source}>施設で登録</Text>
+                )}
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             loading ? null : (
               <Text style={styles.emptyText}>
                 今後のキャンセル予定はありません。
               </Text>
             )
+          }
+          ListHeaderComponent={
+            cancellations.length > 0 ? (
+              <Text style={styles.hint}>
+                タップするとキャンセルを取り消せます
+              </Text>
+            ) : null
           }
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={refresh} />
@@ -190,20 +273,37 @@ export default function ScheduleScreen() {
                   accentColor={colors.primary}
                 />
               )}
+              {isSelectedDateEditable && usersForSelectedDate.length > 0 && (
+                <Text style={styles.hint}>
+                  利用者をタップすると、キャンセルの登録・取り消しができます
+                </Text>
+              )}
             </>
           }
           renderItem={({ item }: { item: ServiceUser }) => {
-            const canceled = canceledUserIdsForSelectedDate.has(item.id);
+            const cancellation = cancellationsByUserForSelectedDate.get(
+              item.id,
+            );
             return (
-              <View style={styles.row}>
+              <TouchableOpacity
+                style={styles.row}
+                disabled={!isSelectedDateEditable}
+                onPress={() =>
+                  cancellation
+                    ? confirmWithdraw(cancellation, item.user_name)
+                    : setCancelTarget(item)
+                }
+              >
                 <View style={styles.rowHeader}>
                   <Text style={styles.userName}>{item.user_name}</Text>
-                  {canceled && <Text style={styles.badge}>キャンセル</Text>}
+                  {cancellation && (
+                    <Text style={styles.badge}>キャンセル</Text>
+                  )}
                 </View>
                 <Text style={styles.date}>
                   {formatDayTime(getDaySchedule(item, weekday))}
                 </Text>
-              </View>
+              </TouchableOpacity>
             );
           }}
           ListEmptyComponent={
@@ -226,6 +326,18 @@ export default function ScheduleScreen() {
       )}
 
       {showLoader && <ActivityIndicator size="large" style={styles.loader} />}
+
+      <CancellationModal
+        target={
+          cancelTarget && {
+            userName: cancelTarget.user_name,
+            dateLabel: formatCancellationDate(selectedDateString),
+          }
+        }
+        submitting={submitting}
+        onSubmit={handleSubmitCancellation}
+        onClose={() => setCancelTarget(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -309,6 +421,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 4,
+  },
+  source: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 4,
+  },
+  hint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 12,
   },
   emptyText: emptyTextStyle,
 });

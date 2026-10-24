@@ -50,10 +50,14 @@ export type Facility = {
   facility_code: string;
 };
 
+/** "family": ご家族がLINEフォームから送信 / "facility": 職員がアプリから登録 */
+export type CancellationSource = "family" | "facility";
+
 export type UpcomingCancellation = {
   id: string;
   date: string;
   reason: string | null;
+  source: CancellationSource;
   family_id: string;
   family: { user_name: string } | null;
 };
@@ -139,6 +143,28 @@ export async function fetchUpcomingCancellations(): Promise<UpcomingCancellation
     "キャンセル予定の取得に失敗しました",
   );
   return data.cancellations ?? [];
+}
+
+/** 電話連絡などを受けて職員がキャンセルを登録する。dateは"YYYY-MM-DD"、detailは理由が「その他」の時の詳細 */
+export async function createCancellation(
+  userId: string,
+  date: string,
+  reason: string,
+  detail?: string,
+): Promise<void> {
+  await callWorker(
+    "createCancellation",
+    { userId, date, reason, detail },
+    "キャンセルの登録に失敗しました",
+  );
+}
+
+export async function deleteCancellation(id: string): Promise<void> {
+  await callWorker(
+    "deleteCancellation",
+    { id },
+    "キャンセルの取り消しに失敗しました",
+  );
 }
 
 /** 「あと◯分」通知の送信、および「お迎え/お送り済み」の記録。どちらもサーバー側に記録され、他端末にも反映される */

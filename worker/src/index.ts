@@ -1,4 +1,9 @@
-import { handleCancelFormPage, handleCancelFormSubmit } from "./cancelForm";
+import {
+  handleCancelFormPage,
+  handleCancelFormSubmit,
+  isValidCancelableDate,
+  resolveCancelReason,
+} from "./cancelForm";
 
 export interface Env {
   SUPABASE_URL: string;
@@ -46,6 +51,9 @@ type RequestBody = {
   eventType?: unknown;
   offset?: unknown;
   code?: unknown;
+  date?: unknown;
+  reason?: unknown;
+  detail?: unknown;
 };
 
 export default {
@@ -107,6 +115,10 @@ export default {
         return handleList(facilityId, env, supabaseHeaders);
       if (action === "listCancellations")
         return handleListCancellations(facilityId, env, supabaseHeaders);
+      if (action === "createCancellation")
+        return handleCreateCancellation(body, facilityId, env, supabaseHeaders);
+      if (action === "deleteCancellation")
+        return handleDeleteCancellation(body, facilityId, env, supabaseHeaders);
       if (action === "listLogs")
         return handleListLogs(body, facilityId, env, supabaseHeaders);
       if (action === "notify")
@@ -413,6 +425,7 @@ type UpcomingCancellation = {
   id: string;
   date: string;
   reason: string | null;
+  source: "family" | "facility";
   family_id: string;
   family: { user_name: string } | null;
 };
@@ -427,7 +440,7 @@ async function handleListCancellations(
   const res = await supabaseFetch(
     env,
     `cancellations?date=gte.${today}` +
-      `&select=id,date,reason,family_id,family:families!inner(user_name)` +
+      `&select=id,date,reason,source,family_id,family:families!inner(user_name)` +
       `&family.facility_id=eq.${facilityId}&family.is_active=eq.true` +
       `&order=date.asc`,
     { method: "GET", headers },
@@ -436,6 +449,106 @@ async function handleListCancellations(
 
   const cancellations = (await res.json()) as UpcomingCancellation[];
   return jsonResponse({ ok: true, cancellations });
+}
+
+/** 電話連絡などを受けて、職員がアプリからキャンセルを登録する（ご家族へのLINE通知は送らない） */
+async function handleCreateCancellation(
+  body: RequestBody,
+  facilityId: string,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<Response> {
+  const { userId, date, reason, detail } = body;
+
+  if (!userId) {
+    return jsonResponse({ ok: false, error: "利用者が指定されていません" }, 400);
+  }
+  if (typeof date !== "string" || !isValidCancelableDate(date)) {
+    return jsonResponse(
+      { ok: false, error: "今日以降の日付を指定してください" },
+      400,
+    );
+  }
+  const finalReason = resolveCancelReason(reason, detail);
+  if (!finalReason) {
+    return jsonResponse({ ok: false, error: "理由を選択してください" }, 400);
+  }
+
+  // 他施設の利用者に登録できないよう、施設に属する利用者か確認する
+  const familyRes = await supabaseFetch(
+    env,
+    `families?id=eq.${encodeURIComponent(userId)}&facility_id=eq.${facilityId}` +
+      `&is_active=eq.true&select=id`,
+    { method: "GET", headers },
+  );
+  const { err } = await checkSupabaseResult<{ id: string }>(
+    familyRes,
+    "利用者が見つかりません",
+  );
+  if (err) return err;
+
+  const res = await supabaseFetch(
+    env,
+    "cancellations?on_conflict=family_id,date",
+    {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({
+        family_id: userId,
+        date,
+        reason: finalReason,
+        source: "facility",
+      }),
+    },
+  );
+  if (!res.ok) return supabaseErrorResponse(res);
+  return jsonResponse({ ok: true }, 201);
+}
+
+async function handleDeleteCancellation(
+  body: RequestBody,
+  facilityId: string,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<Response> {
+  const { id } = body;
+
+  if (!id) {
+    return jsonResponse({ ok: false, error: "idは必須です" }, 400);
+  }
+
+  // 他施設のキャンセルを削除できないよう、自施設の利用者のキャンセルか確認する。
+  // 登録と同じく今日以降の分に限る
+  const findRes = await supabaseFetch(
+    env,
+    `cancellations?id=eq.${encodeURIComponent(id)}&date=gte.${getTodayDateJST()}` +
+      `&select=id,family:families!inner(facility_id)` +
+      `&family.facility_id=eq.${facilityId}`,
+    { method: "GET", headers },
+  );
+  const found = await checkSupabaseResult<{ id: string }>(
+    findRes,
+    "キャンセルが見つかりません",
+  );
+  if (found.err) return found.err;
+
+  const res = await supabaseFetch(
+    env,
+    `cancellations?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: { ...headers, Prefer: "return=representation" },
+    },
+  );
+  const { err } = await checkSupabaseResult<{ id: string }>(
+    res,
+    "キャンセルが見つかりません",
+  );
+  if (err) return err;
+  return jsonResponse({ ok: true });
 }
 
 const LOGS_PAGE_SIZE = 20;
