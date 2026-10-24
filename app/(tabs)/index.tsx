@@ -1,10 +1,3 @@
-import {
-  WEEKDAY_LABELS,
-  filterAndSortByDay,
-  formatDayTime,
-  getCurrentWeekday,
-  getDaySchedule,
-} from "@/lib/schedule";
 import { memo, useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,12 +9,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import type { ViewStyle } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ServiceUserItem } from "@/components/ServiceUserItem";
 import { useServiceUsers } from "@/hooks/useServiceUsers";
+import {
+  WEEKDAY_LABELS,
+  filterAndSortByDay,
+  formatDayTime,
+  getCurrentWeekday,
+  getDaySchedule,
+} from "@/lib/schedule";
 import { colors, emptyTextStyle, inputStyle } from "@/lib/theme";
-import type { ViewStyle } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 type NotifyButtonProps = {
   label: string;

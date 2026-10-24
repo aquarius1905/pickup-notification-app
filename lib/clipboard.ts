@@ -1,5 +1,5 @@
-import { Alert } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import { Alert } from "react-native";
 
 export async function copyToClipboard(
   text: string,

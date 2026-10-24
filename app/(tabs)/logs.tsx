@@ -10,9 +10,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { NotificationLog } from "@/lib/api";
 import { SelectableButtonRow } from "@/components/SelectableButtonRow";
 import { useNotificationLogs } from "@/hooks/useNotificationLogs";
+import type { NotificationLog } from "@/lib/api";
 import {
   badgeContainerStyle,
   badgeTextStyle,

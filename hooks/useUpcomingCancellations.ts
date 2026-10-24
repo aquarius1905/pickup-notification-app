@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { useGuardedLoad } from "@/hooks/useGuardedLoad";
 import type { UpcomingCancellation } from "@/lib/api";
 import { fetchUpcomingCancellations } from "@/lib/api";
 import { showErrorAlert } from "@/lib/error";
-import { useGuardedLoad } from "@/hooks/useGuardedLoad";
 
 export function useUpcomingCancellations() {
   const [cancellations, setCancellations] = useState<UpcomingCancellation[]>([]);

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { useGuardedLoad } from "@/hooks/useGuardedLoad";
 import type { LogsEventTypeFilter, LogsPeriod, NotificationLog } from "@/lib/api";
 import { fetchNotificationLogs } from "@/lib/api";
 import { showErrorAlert } from "@/lib/error";
-import { useGuardedLoad } from "@/hooks/useGuardedLoad";
 
 const SEARCH_DEBOUNCE_MS = 400;
 

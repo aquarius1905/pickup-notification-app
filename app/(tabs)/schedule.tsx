@@ -16,11 +16,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CancellationModal } from "@/components/CancellationModal";
+import { useServiceUsers } from "@/hooks/useServiceUsers";
+import { useUpcomingCancellations } from "@/hooks/useUpcomingCancellations";
 import type { ServiceUser, UpcomingCancellation, Weekday } from "@/lib/api";
 import { createCancellation, deleteCancellation } from "@/lib/api";
 import { showErrorAlert } from "@/lib/error";
-import { useServiceUsers } from "@/hooks/useServiceUsers";
-import { useUpcomingCancellations } from "@/hooks/useUpcomingCancellations";
 import {
   filterAndSortByDay,
   formatDateString,

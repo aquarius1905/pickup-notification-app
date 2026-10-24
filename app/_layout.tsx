@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { FacilityCodeSetup } from "@/components/FacilityCodeSetup";

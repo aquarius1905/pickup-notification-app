@@ -1,14 +1,13 @@
 import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
-
-import { fetchServiceUsers, recordNotifyPhase } from "@/lib/api";
-import { getErrorMessage, showErrorAlert } from "@/lib/error";
+import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 
 import { useGuardedLoad } from "@/hooks/useGuardedLoad";
+import { fetchServiceUsers, recordNotifyPhase } from "@/lib/api";
 import type { NotifyPhase, ServiceUser } from "@/lib/api";
-import { useFocusEffect } from "expo-router";
+import { getErrorMessage, showErrorAlert } from "@/lib/error";
 
 export type { NotifyPhase };
 

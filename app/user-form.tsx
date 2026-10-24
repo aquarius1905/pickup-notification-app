@@ -1,12 +1,6 @@
-import type { Schedule, Weekday } from "@/lib/api";
-import { createServiceUser, updateServiceUser } from "@/lib/api";
-import {
-  WEEKDAY_DISPLAY_ORDER,
-  WEEKDAY_LABELS,
-} from "@/lib/schedule";
-import { useEffect, useMemo, useReducer, useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,7 +17,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SelectableButtonRow } from "@/components/SelectableButtonRow";
 import { TimePickerField } from "@/components/TimePickerField";
+import { createServiceUser, updateServiceUser } from "@/lib/api";
+import type { Schedule, Weekday } from "@/lib/api";
 import { showErrorAlert } from "@/lib/error";
+import {
+  WEEKDAY_DISPLAY_ORDER,
+  WEEKDAY_LABELS,
+} from "@/lib/schedule";
 import { formReducer } from "@/lib/scheduleFormReducer";
 import { colors, inputStyle } from "@/lib/theme";
 

@@ -1,6 +1,3 @@
-import type { ServiceUser } from "@/lib/api";
-import { copyToClipboard } from "@/lib/clipboard";
-import { colors } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import {
   Modal,
@@ -11,6 +8,10 @@ import {
   View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+
+import type { ServiceUser } from "@/lib/api";
+import { copyToClipboard } from "@/lib/clipboard";
+import { colors } from "@/lib/theme";
 
 // 送迎通知専用LINE公式アカウントの友だち追加URL。全施設共通の1アカウントのため
 // 施設ごとの設定値ではなく、アプリ全体で1つのビルド時環境変数として扱う。

@@ -1,4 +1,3 @@
-import { formatTime, formatTimeForDisplay, padZero } from "@/lib/schedule";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
@@ -11,6 +10,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 
+import { formatTime, formatTimeForDisplay, padZero } from "@/lib/schedule";
 import { colors } from "@/lib/theme";
 
 type Props = {

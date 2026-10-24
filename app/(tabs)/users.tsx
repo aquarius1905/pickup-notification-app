@@ -1,9 +1,6 @@
-import type { ServiceUser } from "@/lib/api";
-import { deleteServiceUser, fetchServiceUsers } from "@/lib/api";
-import { formatSchedule } from "@/lib/schedule";
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useMemo, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,10 +12,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { InviteCodeModal } from "@/components/InviteCodeModal";
 import { useGuardedLoad } from "@/hooks/useGuardedLoad";
+import type { ServiceUser } from "@/lib/api";
+import { deleteServiceUser, fetchServiceUsers } from "@/lib/api";
 import { showErrorAlert } from "@/lib/error";
+import { formatSchedule } from "@/lib/schedule";
 import {
   cardRowStyle,
   colors,
@@ -26,7 +27,6 @@ import {
   inputStyle,
   rowHeaderStyle,
 } from "@/lib/theme";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function UsersScreen() {
   const router = useRouter();

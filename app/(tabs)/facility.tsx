@@ -1,5 +1,4 @@
-import { fetchFacility, updateFacilityName } from "@/lib/api";
-import { colors, inputStyle } from "@/lib/theme";
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,13 +12,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { fetchFacility, updateFacilityName } from "@/lib/api";
 import type { Facility } from "@/lib/api";
 import { copyToClipboard } from "@/lib/clipboard";
 import { showErrorAlert } from "@/lib/error";
 import { useFacilityAuthContext } from "@/lib/facilityAuthContext";
-import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, inputStyle } from "@/lib/theme";
 
 export default function FacilityScreen() {
   const { logout } = useFacilityAuthContext();
