@@ -9,3 +9,5 @@ compatibility_date = "2024-01-01"
 # wrangler secret put LINE_CHANNEL_SECRET
 # wrangler secret put LINE_LIFF_ID
 # wrangler secret put LINE_CHANNEL_ID
+# wrangler secret put LINE_LINK_LIFF_ID      （ご家族のLINE連携ページ /link 用のLIFF ID）
+# wrangler secret put LINE_ADD_FRIEND_URL    （連携ページで友だち追加を案内するURL。任意）

@@ -23,7 +23,7 @@ Expo (React Native) → Cloudflare Worker → Supabase (DB)
 
 - 利用者を選択して到着前通知（あと〇分で到着）をLINEで送信
 - 利用者の追加・編集・削除
-- 招待コードによるLINE連携（家族が友だち追加→コード送信で自動紐付け）。利用者管理画面から友だち追加QRと招待コードを拡大表示できる
+- ご家族のLINE連携。利用者管理画面の「招待コードを表示」に出るQRを、ご家族がLINEのQRコードリーダーで読み取るだけで、友だち追加と連携がまとめて完了する（LIFFの連携ページ `/link`）。QRを読めない場合のために、友だち追加後に招待コード（6文字）をトークに送信して連携する従来の方法も残している。別のLINEアカウントと連携済みの利用者は上書きしない（QRの写真などによる乗っ取り防止）。ご家族がLINEアカウントを変える場合は、利用者の編集画面で「LINE ID」を空にしてから連携し直す
 - 施設ごとのAPIキー認証（マルチ施設対応）
 - 通知履歴（ログ）の検索・期間/種別フィルタ・ページング表示
 - 利用者側からのキャンセル連絡（当日・事前を問わず、トーク画面下のリッチメニュー「キャンセル」からLIFFフォームを開き、日付・理由を選んで送信。一度送信したキャンセルは同じ画面から取り消せる）
@@ -67,6 +67,8 @@ npx wrangler secret put LINE_TOKEN
 npx wrangler secret put LINE_CHANNEL_SECRET
 npx wrangler secret put LINE_LIFF_ID
 npx wrangler secret put LINE_CHANNEL_ID
+npx wrangler secret put LINE_LINK_LIFF_ID
+npx wrangler secret put LINE_ADD_FRIEND_URL
 npx wrangler deploy
 ```
 
@@ -82,6 +84,17 @@ cd worker
 npm run generate-rich-menu-image
 LINE_TOKEN=xxxx LINE_LIFF_ID=yyyy npm run setup-rich-menu
 ```
+
+#### ご家族のLINE連携用のLIFF設定（初回のみ）
+
+招待コード入りのQR（`https://liff.line.me/<LIFF ID>?invite=<招待コード>`）を読むだけで連携できるようにするための設定。
+
+1. キャンセル用と同じLINE Loginチャンネルの「チャネル基本設定」で、**リンクされたLINE公式アカウント**に送迎通知のLINE公式アカウントを選ぶ（連携ページで友だち追加を表示するために必要）。
+2. 同じLINE LoginチャンネルのLIFFタブで、LIFFアプリを**もう1つ追加**する（サイズ: Tall、Endpoint URL: `https://<workerのドメイン>/link`、スコープ: `openid`、**友だち追加オプション: On（Aggressive）**）。
+3. 発行された **LIFF ID** を、Workerの `LINE_LINK_LIFF_ID` と、アプリの `EXPO_PUBLIC_LINE_LINK_LIFF_ID`（`.env` と EAS の preview / production 環境変数の両方）に設定する。
+4. Workerの `LINE_ADD_FRIEND_URL` に、アプリの `EXPO_PUBLIC_LINE_ADD_FRIEND_URL` と同じ友だち追加URLを設定する（連携後に友だち追加されていない人へ案内するボタンに使う。未設定ならボタンは出ない）。
+
+`EXPO_PUBLIC_LINE_LINK_LIFF_ID` が未設定のビルドでは、招待コード画面は従来どおり「① 友だち追加 → ② コードを送信」の表示になる。
 
 ### データベースマイグレーション
 
@@ -113,6 +126,7 @@ npx supabase migration repair --status applied <該当のtimestamp>
 | 変数名                            | 説明                                                                                                                                                                                                                                         |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EXPO_PUBLIC_WORKER_URL`          | Cloudflare WorkerのURL                                                                                                                                                                                                                       |
+| `EXPO_PUBLIC_LINE_LINK_LIFF_ID`   | ご家族のLINE連携ページ用のLIFF ID（「ご家族のLINE連携用のLIFF設定」参照）。設定すると、招待コード画面のQRを1回読むだけで連携できる。未設定なら従来の2段階表示 |
 | `EXPO_PUBLIC_LINE_ADD_FRIEND_URL` | 送迎通知専用LINE公式アカウントの友だち追加URL（LINE Official Account Managerで発行）。全施設で共通の1アカウントのため、施設ごとではなくここで1つだけ設定する。未設定でも動作するが、利用者管理画面の招待コード表示に友だち追加QRが出なくなる |
 
 施設のAPIキー（64文字）はビルド時に埋め込まず、アプリ初回起動時のセットアップ画面で**施設コード**（短い人が読み書きできるコード）を入力することで取得し、端末内のAsyncStorageに保存する。これにより1つのビルドを全施設に配布できる。施設コードは「施設設定」タブで確認・コピーできる。端末の設定をやり直したい場合は同タブの「この端末の設定を解除」から再設定できる。
@@ -125,4 +139,3 @@ npx supabase migration repair --status applied <該当のtimestamp>
 - **通知文面のカスタマイズ**: 施設ごとに通知メッセージを変更できるようにする。
 - **`schedule` の持ち方の見直し**: 現状JSONカラムにWeekday単位で格納しているが、拡張性・検索性の観点から別テーブルへの正規化などを検討する。
 - **LINE通知の既読確認**: LINE Messaging APIには送信済みメッセージが読まれたかどうかを取得する仕組みがなく、厳密な既読確認は不可能。「確認しました」ボタンのタップを記録する等で近似することは技術的には可能だが、通知を受け取るご家族側に毎回操作の手間を強いることになるため、現時点では実装しない。
-- **招待コード入力をLIFFのワンタップ登録に置き換える**: 現状は家族が友だち追加後に6桁の招待コードを手入力する必要がある。キャンセルフォームと同様にLIFFを使い、利用者ごとの固有リンクをタップするだけで自動連携できるようにすれば入力の手間が減る。ただし招待コード自体（リンクに埋め込む形）や友だち追加自体は仕組み上なくならないため、効果に対して実装コストが見合うかはモニター運用でのフィードバックを見てから判断する。

@@ -4,6 +4,7 @@ import {
   isValidCancelableDate,
   resolveCancelReason,
 } from "./cancelForm";
+import { handleLinkFormPage, handleLinkFormSubmit } from "./linkForm";
 
 export interface Env {
   SUPABASE_URL: string;
@@ -12,6 +13,10 @@ export interface Env {
   LINE_CHANNEL_SECRET: string;
   LINE_LIFF_ID: string;
   LINE_CHANNEL_ID: string;
+  /** ご家族のLINE連携ページ（/link）用のLIFF ID */
+  LINE_LINK_LIFF_ID?: string;
+  /** 送迎通知LINE公式アカウントの友だち追加URL（連携ページで未追加の人に案内する） */
+  LINE_ADD_FRIEND_URL?: string;
 }
 
 export type SupabaseHeaders = Record<string, string>;
@@ -70,6 +75,20 @@ export default {
           "Content-Type": "application/json",
         };
         return handleCancelFormSubmit(request, env, supabaseHeaders);
+      }
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
+    // ご家族のLINE連携（LIFF）：招待コード入りのQRから開き、本人確認して利用者に紐付ける
+    if (url.pathname === "/link") {
+      if (request.method === "GET") return handleLinkFormPage(env);
+      if (request.method === "POST") {
+        const supabaseHeaders: SupabaseHeaders = {
+          apikey: env.SUPABASE_API_KEY,
+          Authorization: `Bearer ${env.SUPABASE_API_KEY}`,
+          "Content-Type": "application/json",
+        };
+        return handleLinkFormSubmit(request, env, supabaseHeaders);
       }
       return new Response("Method Not Allowed", { status: 405 });
     }
@@ -1021,6 +1040,75 @@ async function handleTextMessageEvent(
   await handleInviteCodeMessage(rawText, lineUserId, replyToken, env, headers);
 }
 
+export type LinkByInviteCodeResult =
+  | { status: "linked"; userName: string }
+  | { status: "already_linked"; userName: string }
+  | { status: "linked_to_other" }
+  | { status: "not_found" }
+  | { status: "failed" };
+
+/**
+ * 招待コードに一致する利用者に、LINEのユーザーIDを紐付ける。
+ * 別のLINEアカウントと連携済みの利用者は上書きしない（QRの写真などで第三者に乗っ取られるのを防ぐ）。
+ * LINEアカウントを変える場合は、職員が利用者の編集画面でLINE IDを空にしてから連携し直す。
+ */
+export async function linkFamilyByInviteCode(
+  inviteCode: string,
+  lineUserId: string,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<LinkByInviteCodeResult> {
+  const code = inviteCode.trim().toUpperCase();
+  if (!code) return { status: "not_found" };
+
+  const familyRes = await supabaseFetch(
+    env,
+    `families?invite_code=eq.${encodeURIComponent(code)}&is_active=eq.true&select=id,user_name,line_user_id`,
+    { method: "GET", headers },
+  );
+  if (!familyRes.ok) return { status: "failed" };
+  const users = (await familyRes.json()) as unknown;
+  if (!Array.isArray(users) || users.length === 0) {
+    return { status: "not_found" };
+  }
+
+  const user = users[0] as {
+    id: string;
+    user_name: string;
+    line_user_id: string | null;
+  };
+  if (user.line_user_id === lineUserId) {
+    return { status: "already_linked", userName: user.user_name };
+  }
+  if (user.line_user_id) return { status: "linked_to_other" };
+
+  // 確認してから更新するまでの間に別の人が連携した場合も上書きしないよう、未連携を条件に更新する
+  const updateRes = await supabaseFetch(
+    env,
+    `families?id=eq.${user.id}&or=(line_user_id.is.null,line_user_id.eq.)`,
+    {
+      method: "PATCH",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({ line_user_id: lineUserId }),
+    },
+  );
+  if (!updateRes.ok) return { status: "failed" };
+  const updated = (await updateRes.json()) as unknown[];
+  if (!Array.isArray(updated) || updated.length === 0) {
+    return { status: "linked_to_other" };
+  }
+  return { status: "linked", userName: user.user_name };
+}
+
+/** 別のLINEアカウントと連携済みの利用者に、連携しようとした時の案内文 */
+export const LINKED_TO_OTHER_MESSAGE =
+  "この利用者は、すでに別のLINEアカウントと連携されています。\nLINEアカウントを変更する場合は、施設にお問い合わせください。";
+
+/** 連携完了時にご家族へ送る案内文（トークでのコード入力・連携ページの両方で使う） */
+export function linkCompletedMessage(userName: string): string {
+  return `${userName}さんの登録が完了しました。\n送迎の通知をお届けします。\nお休みする場合は、当日・事前を問わず下のメニューの「キャンセル」からお知らせください。`;
+}
+
 /** 未連携ユーザーからのメッセージを招待コードとして照合し、一致すればline_user_idを紐付ける */
 async function handleInviteCodeMessage(
   rawText: string,
@@ -1029,15 +1117,9 @@ async function handleInviteCodeMessage(
   env: Env,
   headers: SupabaseHeaders,
 ): Promise<void> {
-  const text = rawText.toUpperCase();
-  const familyRes = await supabaseFetch(
-    env,
-    `families?invite_code=eq.${encodeURIComponent(text)}&is_active=eq.true&select=id,user_name`,
-    { method: "GET", headers },
-  );
-  const users = (await familyRes.json()) as unknown;
+  const result = await linkFamilyByInviteCode(rawText, lineUserId, env, headers);
 
-  if (!Array.isArray(users) || users.length === 0) {
+  if (result.status === "not_found") {
     await replyLineMessage(
       replyToken,
       "招待コードが見つかりません。\nコードをご確認のうえ、もう一度送信してください。",
@@ -1046,20 +1128,13 @@ async function handleInviteCodeMessage(
     return;
   }
 
-  const user = users[0] as { id: string; user_name: string };
+  if (result.status === "linked_to_other") {
+    await replyLineMessage(replyToken, LINKED_TO_OTHER_MESSAGE, env);
+    return;
+  }
 
-  const updateRes = await supabaseFetch(env, `families?id=eq.${user.id}`, {
-    method: "PATCH",
-    headers: { ...headers, Prefer: "return=minimal" },
-    body: JSON.stringify({ line_user_id: lineUserId }),
-  });
-
-  if (updateRes.ok) {
-    await replyLineMessage(
-      replyToken,
-      `${user.user_name}さんの登録が完了しました。\n送迎の通知をお届けします。\nお休みする場合は、当日・事前を問わず下のメニューの「キャンセル」からお知らせください。`,
-      env,
-    );
+  if (result.status === "linked" || result.status === "already_linked") {
+    await replyLineMessage(replyToken, linkCompletedMessage(result.userName), env);
   } else {
     await replyLineMessage(
       replyToken,

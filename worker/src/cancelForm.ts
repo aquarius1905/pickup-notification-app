@@ -332,7 +332,7 @@ type CancelFormBody = {
 };
 
 /** LIFFのIDトークンをLINEに照会し、検証済みのuserIdを返す（クライアント申告値は信用しない） */
-async function verifyLiffIdToken(
+export async function verifyLiffIdToken(
   idToken: string,
   env: Env,
 ): Promise<string | null> {

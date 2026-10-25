@@ -17,6 +17,15 @@ import { colors } from "@/lib/theme";
 // 施設ごとの設定値ではなく、アプリ全体で1つのビルド時環境変数として扱う。
 const LINE_ADD_FRIEND_URL = process.env.EXPO_PUBLIC_LINE_ADD_FRIEND_URL;
 
+// ご家族のLINE連携ページ（Workerの /link）用のLIFF ID。設定されていれば、
+// QRを1回読むだけで友だち追加と連携が終わるQRを表示する（招待コードの手入力は控えとして残す）
+const LINE_LINK_LIFF_ID = process.env.EXPO_PUBLIC_LINE_LINK_LIFF_ID;
+
+function buildLinkUrl(inviteCode: string): string {
+  // パラメータ名を code にしないのは、LINE外のブラウザでのログイン時に付くOAuthの code と衝突させないため
+  return `https://liff.line.me/${LINE_LINK_LIFF_ID}?invite=${encodeURIComponent(inviteCode)}`;
+}
+
 type Props = {
   user: ServiceUser | null;
   onClose: () => void;
@@ -38,13 +47,40 @@ export function InviteCodeModal({ user, onClose }: Props) {
               <Ionicons name="close" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          {!LINE_ADD_FRIEND_URL && (
+          {LINE_LINK_LIFF_ID && user && (
+            <>
+              <View style={styles.codeStep}>
+                <Text style={styles.codeStepLabel}>
+                  LINEのQRコードリーダーで読み取ってください
+                </Text>
+                <View style={styles.qrWrapper}>
+                  <QRCode value={buildLinkUrl(user.invite_code)} size={180} />
+                </View>
+                <Text style={styles.codeSheetHint}>
+                  友だち追加と連携がまとめて完了します
+                </Text>
+              </View>
+              <View style={styles.fallback}>
+                <Text style={styles.fallbackLabel}>
+                  読み取れない場合は、友だち追加のあと{"\n"}このコードをトークに送信
+                </Text>
+                {LINE_ADD_FRIEND_URL && (
+                  <View style={styles.fallbackQr}>
+                    <QRCode value={LINE_ADD_FRIEND_URL} size={80} />
+                  </View>
+                )}
+                <Text style={styles.fallbackCode}>{user.invite_code}</Text>
+              </View>
+            </>
+          )}
+
+          {!LINE_LINK_LIFF_ID && !LINE_ADD_FRIEND_URL && (
             <Text style={styles.codeSheetHint}>
               この画面を見せるか、コードを紙に書いてお渡しください
             </Text>
           )}
 
-          {LINE_ADD_FRIEND_URL && (
+          {!LINE_LINK_LIFF_ID && LINE_ADD_FRIEND_URL && (
             <View style={styles.codeStep}>
               <Text style={styles.codeStepLabel}>① LINEを友だち追加</Text>
               <View style={styles.qrWrapper}>
@@ -53,14 +89,16 @@ export function InviteCodeModal({ user, onClose }: Props) {
             </View>
           )}
 
-          <View style={styles.codeStep}>
-            <Text style={styles.codeStepLabel}>
-              {LINE_ADD_FRIEND_URL
-                ? "② このコードをトークに送信"
-                : "招待コードをトークに送信"}
-            </Text>
-            <Text style={styles.codeSheetCode}>{user?.invite_code}</Text>
-          </View>
+          {!LINE_LINK_LIFF_ID && (
+            <View style={styles.codeStep}>
+              <Text style={styles.codeStepLabel}>
+                {LINE_ADD_FRIEND_URL
+                  ? "② このコードをトークに送信"
+                  : "招待コードをトークに送信"}
+              </Text>
+              <Text style={styles.codeSheetCode}>{user?.invite_code}</Text>
+            </View>
+          )}
           <TouchableOpacity
             style={styles.codeCopyButton}
             onPress={async () => {
@@ -131,6 +169,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     borderRadius: 8,
+  },
+  fallback: {
+    alignItems: "center",
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    width: "100%",
+  },
+  fallbackLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  fallbackQr: {
+    marginTop: 10,
+  },
+  fallbackCode: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: colors.primary,
+    letterSpacing: 4,
+    marginTop: 6,
   },
   codeSheetCode: {
     fontSize: 56,
