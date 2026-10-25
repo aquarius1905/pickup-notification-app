@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Burnt from "burnt";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import {
@@ -17,7 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SelectableButtonRow } from "@/components/SelectableButtonRow";
 import { TimePickerField } from "@/components/TimePickerField";
-import { createServiceUser, updateServiceUser } from "@/lib/api";
+import { createServiceUser, unlinkLine, updateServiceUser } from "@/lib/api";
 import type { Schedule, Weekday } from "@/lib/api";
 import { showErrorAlert } from "@/lib/error";
 import {
@@ -67,6 +68,37 @@ export default function UserFormScreen() {
     editingUser: null,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+
+  // ご家族がLINEアカウントを変えた場合などに、連携を外して招待コードから連携し直せるようにする。
+  // LINEのユーザーIDは職員が見ても意味がなく、手で書き換えると通知が届かなくなるため、画面には出さない
+  const handleUnlink = () => {
+    const editingUser = form.editingUser;
+    if (!editingUser) return;
+    Alert.alert(
+      "連携の解除",
+      `${editingUser.user_name}さんのLINE連携を解除しますか？\n解除すると、ご家族に送迎の通知が届かなくなります。もう一度連携するには、招待コードのQRを読み取ってもらってください。`,
+      [
+        { text: "やめる", style: "cancel" },
+        {
+          text: "解除する",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setUnlinking(true);
+              await unlinkLine(editingUser.id);
+              dispatch({ type: "setLineId", payload: "" });
+              Burnt.toast({ title: "LINE連携を解除しました", preset: "done" });
+            } catch (error) {
+              showErrorAlert(error);
+            } finally {
+              setUnlinking(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   useEffect(() => {
     if (!params.id) return;
@@ -116,20 +148,15 @@ export default function UserFormScreen() {
     try {
       setSubmitting(true);
       if (form.editingUser) {
+        // LINE連携はここでは送らない（招待コードと「連携を解除」ボタンだけで変える）
         await updateServiceUser(
           form.editingUser.id,
           form.name.trim(),
-          form.lineId.trim(),
           form.draft,
           form.notifyMinutes,
         );
       } else {
-        await createServiceUser(
-          form.name.trim(),
-          form.lineId.trim(),
-          form.draft,
-          form.notifyMinutes,
-        );
+        await createServiceUser(form.name.trim(), form.draft, form.notifyMinutes);
       }
       router.back();
     } catch (error) {
@@ -164,12 +191,30 @@ export default function UserFormScreen() {
             value={form.name}
             onChangeText={(v) => dispatch({ type: "setName", payload: v })}
           />
-          <TextInput
-            style={styles.input}
-            placeholder="LINE ID（任意）"
-            value={form.lineId}
-            onChangeText={(v) => dispatch({ type: "setLineId", payload: v })}
-          />
+          {isEditing && (
+            <>
+              <Text style={styles.fieldLabel}>ご家族のLINE連携</Text>
+              {form.lineId ? (
+                <View style={styles.lineStatusRow}>
+                  <Text style={styles.lineLinkedText}>LINE連携済み</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.unlinkButton,
+                      unlinking && styles.disabledButton,
+                    ]}
+                    onPress={handleUnlink}
+                    disabled={unlinking}
+                  >
+                    <Text style={styles.unlinkButtonText}>連携を解除</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Text style={styles.lineUnlinkedText}>
+                  未連携です。利用者一覧の「招待コードを表示」から連携できます。
+                </Text>
+              )}
+            </>
+          )}
 
           <Text style={styles.fieldLabel}>到着前通知のタイミング</Text>
           <SelectableButtonRow
@@ -269,6 +314,35 @@ const styles = StyleSheet.create({
   },
   weekdayRow: {
     marginBottom: 8,
+  },
+  lineStatusRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  lineLinkedText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.success,
+  },
+  lineUnlinkedText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  unlinkButton: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  unlinkButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.danger,
   },
   dayTimeRow: {
     flexDirection: "row",

@@ -177,13 +177,12 @@ export async function recordNotifyPhase(
 
 export async function createServiceUser(
   userName: string,
-  lineUserId?: string,
   schedule?: Schedule,
   notifyMinutes?: 5 | 10,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "create",
-    { userName, lineUserId, schedule, notifyMinutes },
+    { userName, schedule, notifyMinutes },
     "利用者の追加に失敗しました",
   );
   if (!data.user) throw new Error("利用者の追加に失敗しました");
@@ -193,17 +192,21 @@ export async function createServiceUser(
 export async function updateServiceUser(
   id: string,
   userName?: string,
-  lineUserId?: string,
   schedule?: Schedule,
   notifyMinutes?: 5 | 10,
 ): Promise<ServiceUser> {
   const data = await callWorker(
     "update",
-    { id, userName, lineUserId, schedule, notifyMinutes },
+    { id, userName, schedule, notifyMinutes },
     "利用者の更新に失敗しました",
   );
   if (!data.user) throw new Error("利用者の更新に失敗しました");
   return data.user;
+}
+
+/** ご家族のLINE連携を外す。LINEのユーザーIDは招待コード経由でしか設定できないため、アプリからは外すことだけができる */
+export async function unlinkLine(id: string): Promise<void> {
+  await callWorker("unlinkLine", { id }, "LINE連携の解除に失敗しました");
 }
 
 export async function deleteServiceUser(id: string): Promise<void> {

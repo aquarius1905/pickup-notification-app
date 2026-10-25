@@ -46,7 +46,6 @@ type RequestBody = {
   userName?: string;
   userId?: string;
   notifyType?: string;
-  lineUserId?: string;
   schedule?: unknown;
   notifyMinutes?: unknown;
   id?: string;
@@ -148,6 +147,8 @@ export default {
         return handleUpdate(body, facilityId, env, supabaseHeaders);
       if (action === "delete")
         return handleDelete(body, facilityId, env, supabaseHeaders);
+      if (action === "unlinkLine")
+        return handleUnlinkLine(body, facilityId, env, supabaseHeaders);
       if (action === "getFacility") return handleGetFacility(facility);
       if (action === "updateFacility")
         return handleUpdateFacility(body, facilityId, env, supabaseHeaders);
@@ -744,7 +745,8 @@ async function handleCreate(
   env: Env,
   headers: SupabaseHeaders,
 ): Promise<Response> {
-  const { userName, lineUserId, schedule, notifyMinutes } = body;
+  // LINEのユーザーIDは招待コード経由（webhook・連携ページ）でしか設定させない
+  const { userName, schedule, notifyMinutes } = body;
 
   if (!userName || !userName.trim()) {
     return jsonResponse({ ok: false, error: "利用者名は必須です" }, 400);
@@ -752,7 +754,7 @@ async function handleCreate(
 
   const payload = {
     user_name: userName.trim(),
-    line_user_id: lineUserId || "",
+    line_user_id: "",
     is_active: true,
     facility_id: facilityId,
     invite_code: generateInviteCode(),
@@ -778,7 +780,8 @@ async function handleUpdate(
   env: Env,
   headers: SupabaseHeaders,
 ): Promise<Response> {
-  const { id, userName, lineUserId, schedule, notifyMinutes } = body;
+  // LINEのユーザーIDは招待コード経由でしか設定させず、外すのは unlinkLine だけにする
+  const { id, userName, schedule, notifyMinutes } = body;
 
   if (!id) {
     return jsonResponse({ ok: false, error: "idは必須です" }, 400);
@@ -786,12 +789,10 @@ async function handleUpdate(
 
   const updates: Partial<{
     user_name: string;
-    line_user_id: string;
     schedule: Schedule;
     notify_minutes: 5 | 10;
   }> = {};
   if (userName !== undefined) updates.user_name = userName.trim();
-  if (lineUserId !== undefined) updates.line_user_id = lineUserId || "";
   if (schedule !== undefined) updates.schedule = normalizeSchedule(schedule);
   if (notifyMinutes !== undefined) {
     updates.notify_minutes = normalizeNotifyMinutes(notifyMinutes);
@@ -811,6 +812,37 @@ async function handleUpdate(
       method: "PATCH",
       headers: { ...headers, Prefer: "return=representation" },
       body: JSON.stringify(updates),
+    },
+  );
+
+  const { err, rows } = await checkSupabaseResult<FamilyRecord>(
+    res,
+    "利用者が見つかりません",
+  );
+  if (err) return err;
+  return jsonResponse({ ok: true, user: rows[0] });
+}
+
+/** ご家族のLINE連携を外す（LINEアカウントを変える時などに、招待コードから連携し直すため） */
+async function handleUnlinkLine(
+  body: RequestBody,
+  facilityId: string,
+  env: Env,
+  headers: SupabaseHeaders,
+): Promise<Response> {
+  const { id } = body;
+
+  if (!id) {
+    return jsonResponse({ ok: false, error: "idは必須です" }, 400);
+  }
+
+  const res = await supabaseFetch(
+    env,
+    `families?id=eq.${encodeURIComponent(id)}&facility_id=eq.${facilityId}`,
+    {
+      method: "PATCH",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({ line_user_id: "" }),
     },
   );
 
@@ -1050,7 +1082,7 @@ export type LinkByInviteCodeResult =
 /**
  * 招待コードに一致する利用者に、LINEのユーザーIDを紐付ける。
  * 別のLINEアカウントと連携済みの利用者は上書きしない（QRの写真などで第三者に乗っ取られるのを防ぐ）。
- * LINEアカウントを変える場合は、職員が利用者の編集画面でLINE IDを空にしてから連携し直す。
+ * LINEアカウントを変える場合は、職員が利用者の編集画面の「連携を解除」を押してから連携し直す。
  */
 export async function linkFamilyByInviteCode(
   inviteCode: string,
