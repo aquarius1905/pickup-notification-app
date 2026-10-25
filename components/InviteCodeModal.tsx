@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -32,6 +33,22 @@ type Props = {
 };
 
 export function InviteCodeModal({ user, onClose }: Props) {
+  // 連携用QRと予備（友だち追加QR＋コード）が同時に並ぶとご家族が取り違えるため、
+  // 予備は「読み取れない場合はこちら」をタップした時だけ、連携用QRと入れ替えて表示する
+  const [showFallback, setShowFallback] = useState(false);
+  useEffect(() => {
+    setShowFallback(false);
+  }, [user?.id]);
+
+  // 連携用のLIFFが未設定のビルドでは、従来の「友だち追加→コード送信」表示だけを出す
+  const showLinkQr = Boolean(LINE_LINK_LIFF_ID) && !showFallback;
+
+  const codeLabel = LINE_ADD_FRIEND_URL
+    ? "② このコードをトークに送信"
+    : LINE_LINK_LIFF_ID
+      ? "友だち追加のあと、このコードをトークに送信"
+      : "招待コードをトークに送信";
+
   return (
     <Modal
       visible={user !== null}
@@ -47,7 +64,8 @@ export function InviteCodeModal({ user, onClose }: Props) {
               <Ionicons name="close" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          {LINE_LINK_LIFF_ID && user && (
+
+          {user && showLinkQr && (
             <>
               <View style={styles.codeStep}>
                 <Text style={styles.codeStepLabel}>
@@ -60,58 +78,58 @@ export function InviteCodeModal({ user, onClose }: Props) {
                   友だち追加と連携がまとめて完了します
                 </Text>
               </View>
-              <View style={styles.fallback}>
-                <Text style={styles.fallbackLabel}>
-                  読み取れない場合は、友だち追加のあと{"\n"}このコードをトークに送信
+              <TouchableOpacity
+                style={styles.toggleButton}
+                onPress={() => setShowFallback(true)}
+              >
+                <Text style={styles.toggleButtonText}>
+                  読み取れない場合はこちら
                 </Text>
-                {LINE_ADD_FRIEND_URL && (
-                  <View style={styles.fallbackQr}>
-                    <QRCode value={LINE_ADD_FRIEND_URL} size={80} />
-                  </View>
-                )}
-                <Text style={styles.fallbackCode}>{user.invite_code}</Text>
-              </View>
+              </TouchableOpacity>
             </>
           )}
 
-          {!LINE_LINK_LIFF_ID && !LINE_ADD_FRIEND_URL && (
-            <Text style={styles.codeSheetHint}>
-              この画面を見せるか、コードを紙に書いてお渡しください
-            </Text>
-          )}
-
-          {!LINE_LINK_LIFF_ID && LINE_ADD_FRIEND_URL && (
-            <View style={styles.codeStep}>
-              <Text style={styles.codeStepLabel}>① LINEを友だち追加</Text>
-              <View style={styles.qrWrapper}>
-                <QRCode value={LINE_ADD_FRIEND_URL} size={140} />
+          {user && !showLinkQr && (
+            <>
+              {!LINE_ADD_FRIEND_URL && !LINE_LINK_LIFF_ID && (
+                <Text style={styles.codeSheetHint}>
+                  この画面を見せるか、コードを紙に書いてお渡しください
+                </Text>
+              )}
+              {LINE_ADD_FRIEND_URL && (
+                <View style={styles.codeStep}>
+                  <Text style={styles.codeStepLabel}>① LINEを友だち追加</Text>
+                  <View style={styles.qrWrapper}>
+                    <QRCode value={LINE_ADD_FRIEND_URL} size={140} />
+                  </View>
+                </View>
+              )}
+              <View style={styles.codeStep}>
+                <Text style={styles.codeStepLabel}>{codeLabel}</Text>
+                <Text style={styles.codeSheetCode}>{user.invite_code}</Text>
               </View>
-            </View>
+              <TouchableOpacity
+                style={styles.codeCopyButton}
+                onPress={async () => {
+                  await copyToClipboard(
+                    user.invite_code,
+                    `招待コード: ${user.invite_code}`,
+                  );
+                }}
+              >
+                <Ionicons name="copy-outline" size={16} color={colors.primary} />
+                <Text style={styles.codeCopyButtonText}>コピー</Text>
+              </TouchableOpacity>
+              {LINE_LINK_LIFF_ID && (
+                <TouchableOpacity
+                  style={styles.toggleButton}
+                  onPress={() => setShowFallback(false)}
+                >
+                  <Text style={styles.toggleButtonText}>連携用のQRに戻る</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
-
-          {!LINE_LINK_LIFF_ID && (
-            <View style={styles.codeStep}>
-              <Text style={styles.codeStepLabel}>
-                {LINE_ADD_FRIEND_URL
-                  ? "② このコードをトークに送信"
-                  : "招待コードをトークに送信"}
-              </Text>
-              <Text style={styles.codeSheetCode}>{user?.invite_code}</Text>
-            </View>
-          )}
-          <TouchableOpacity
-            style={styles.codeCopyButton}
-            onPress={async () => {
-              if (!user) return;
-              await copyToClipboard(
-                user.invite_code,
-                `招待コード: ${user.invite_code}`,
-              );
-            }}
-          >
-            <Ionicons name="copy-outline" size={16} color={colors.primary} />
-            <Text style={styles.codeCopyButtonText}>コピー</Text>
-          </TouchableOpacity>
         </Pressable>
       </Pressable>
     </Modal>
@@ -170,29 +188,15 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     borderRadius: 8,
   },
-  fallback: {
-    alignItems: "center",
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    width: "100%",
+  toggleButton: {
+    paddingVertical: 12,
+    marginTop: 8,
   },
-  fallbackLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 19,
-  },
-  fallbackQr: {
-    marginTop: 10,
-  },
-  fallbackCode: {
-    fontSize: 28,
-    fontWeight: "700",
+  toggleButtonText: {
+    fontSize: 14,
     color: colors.primary,
-    letterSpacing: 4,
-    marginTop: 6,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
   codeSheetCode: {
     fontSize: 56,
