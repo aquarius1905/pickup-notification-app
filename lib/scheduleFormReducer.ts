@@ -1,5 +1,9 @@
 import type { Schedule, ServiceUser, Weekday } from "@/lib/api";
-import { WEEKDAYS, formatTimeForDisplay } from "@/lib/schedule";
+import {
+  WEEKDAYS,
+  WEEKDAY_DISPLAY_ORDER,
+  formatTimeForDisplay,
+} from "@/lib/schedule";
 
 export type FormState = {
   name: string;
@@ -50,9 +54,21 @@ export function formReducer(state: FormState, action: FormAction): FormState {
         delete next[key];
         return { ...state, draft: next };
       }
+      // 送迎時刻は曜日によらず同じ利用者が多いため、新しく選んだ曜日には、
+      // 選択済みの曜日（月→日の順で最初に時刻が入っているもの）の時刻を引き継ぐ。
+      // 違う曜日だけ職員が直せばよく、同じ時刻を曜日の数だけ選び直す手間をなくす
+      const source = WEEKDAY_DISPLAY_ORDER.map((d) => state.draft[`${d}`]).find(
+        (entry) => entry && (entry.pickup || entry.dropoff),
+      );
       return {
         ...state,
-        draft: { ...state.draft, [key]: { pickup: null, dropoff: null } },
+        draft: {
+          ...state.draft,
+          [key]: {
+            pickup: source?.pickup ?? null,
+            dropoff: source?.dropoff ?? null,
+          },
+        },
       };
     }
     case "updateTime": {
