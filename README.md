@@ -75,6 +75,8 @@ npx wrangler secret put LINE_ADD_FRIEND_URL
 npx wrangler deploy
 ```
 
+Supabaseの無料プランは、しばらくDBへのアクセスがないとプロジェクトが自動で一時停止する。これを防ぐため、Workerの Cron Trigger（`wrangler.toml` の `[triggers]`）で毎日 3:00（日本時間）にDBへ軽い問い合わせをしている（`worker/src/index.ts` の `scheduled`）。実行結果は Cloudflare ダッシュボードの Worker のログで確認できる。施設が実際に利用を始める段階では、自動バックアップのためにも有料プラン（Pro）への切り替えを検討する。
+
 #### キャンセル用のLIFF・リッチメニュー設定（初回のみ）
 
 1. LINE Developersコンソールで、**Messaging APIチャンネルと同じProvider配下に LINE Loginチャンネルを新規作成**する（Messaging APIチャンネルへの直接のLIFF追加は廃止されている）。同じProviderであれば、LIFFで取得できるユーザーIDとMessaging APIのuserIdが一致する。

@@ -158,6 +158,25 @@ export default {
       return jsonResponse({ ok: false, error: String(error) }, 500);
     }
   },
+
+  // Supabaseの無料プランは、しばらくDBへのアクセスがないとプロジェクトが自動で一時停止する。
+  // 施設が使っていない期間も止まらないよう、wrangler.toml の Cron Trigger で1日1回、軽い問い合わせをする
+  async scheduled(_controller, env): Promise<void> {
+    const res = await supabaseFetch(env, "families?select=id&limit=1", {
+      method: "GET",
+      headers: {
+        apikey: env.SUPABASE_API_KEY,
+        Authorization: `Bearer ${env.SUPABASE_API_KEY}`,
+      },
+    });
+    if (!res.ok) {
+      console.error(
+        `Supabaseの停止防止アクセスに失敗しました（status ${res.status}）: ${await res.text()}`,
+      );
+      return;
+    }
+    console.log("Supabaseの停止防止アクセスに成功しました");
+  },
 } satisfies ExportedHandler<Env>;
 
 // --- ヘルパー ---
