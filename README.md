@@ -77,7 +77,7 @@ npx wrangler secret put LINE_ADD_FRIEND_URL
 npx wrangler deploy
 ```
 
-Supabaseの無料プランは、しばらくDBへのアクセスがないとプロジェクトが自動で一時停止する。これを防ぐため、Workerの Cron Trigger（`wrangler.toml` の `[triggers]`）で毎日 3:00（日本時間）にDBへ軽い問い合わせをしている（`worker/src/index.ts` の `scheduled`）。実行結果は Cloudflare ダッシュボードの Worker のログで確認できる。施設が実際に利用を始める段階では、自動バックアップのためにも有料プラン（Pro）への切り替えを検討する。
+Supabaseの無料プランは、しばらくDBへのアクセスがないとプロジェクトが自動で一時停止する。これを防ぐため、Workerの Cron Trigger（`wrangler.toml` の `[triggers]`）で6時間おき（日本時間 3・9・15・21時）に、DBへの読み取りと `keepalive` テーブルへの書き込みをしている（`worker/src/index.ts` の `scheduled`）。1日1回の読み取りだけでは「十分なアクセス」と判定されず停止予告が届いたため、2026年11月に回数を増やし書き込みも加えた。実行結果は Cloudflare ダッシュボードの Worker のログで確認できる。施設が実際に利用を始める段階では、自動バックアップのためにも有料プラン（Pro）への切り替えを検討する。
 
 #### キャンセル用のLIFF・リッチメニュー設定（初回のみ）
 

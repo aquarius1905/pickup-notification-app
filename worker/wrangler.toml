@@ -2,10 +2,10 @@ name = "pickup-notification-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
-# Supabase無料プランの自動停止を防ぐため、毎日 3:00（日本時間）にDBへ軽い問い合わせをする（src/index.ts の scheduled）
-# cron はUTCで指定するため、18:00 UTC = 翌 3:00 JST
+# Supabase無料プランの自動停止を防ぐため、6時間おきにDBへ読み取りと書き込みをする（src/index.ts の scheduled）
+# cron はUTCで指定する（0・6・12・18時 UTC = 9・15・21・3時 JST）
 [triggers]
-crons = ["0 18 * * *"]
+crons = ["0 */6 * * *"]
 
 # Cloudflareダッシュボードで設定済みの環境変数（secretsとして管理）
 # wrangler secret put SUPABASE_URL

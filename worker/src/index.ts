@@ -160,22 +160,41 @@ export default {
   },
 
   // Supabaseの無料プランは、しばらくDBへのアクセスがないとプロジェクトが自動で一時停止する。
-  // 施設が使っていない期間も止まらないよう、wrangler.toml の Cron Trigger で1日1回、軽い問い合わせをする
+  // 施設が使っていない期間も止まらないよう、wrangler.toml の Cron Trigger で数時間おきに
+  // 読み取りと書き込み（keepalive テーブルの更新）をする。
+  // 1日1回の読み取りだけでは「十分なアクセス」と判定されず、停止予告が届いたため書き込みも行う
   async scheduled(_controller, env): Promise<void> {
-    const res = await supabaseFetch(env, "families?select=id&limit=1", {
+    const headers: SupabaseHeaders = {
+      apikey: env.SUPABASE_API_KEY,
+      Authorization: `Bearer ${env.SUPABASE_API_KEY}`,
+      "Content-Type": "application/json",
+    };
+
+    const readRes = await supabaseFetch(env, "families?select=id&limit=1", {
       method: "GET",
-      headers: {
-        apikey: env.SUPABASE_API_KEY,
-        Authorization: `Bearer ${env.SUPABASE_API_KEY}`,
-      },
+      headers,
     });
-    if (!res.ok) {
+    if (!readRes.ok) {
       console.error(
-        `Supabaseの停止防止アクセスに失敗しました（status ${res.status}）: ${await res.text()}`,
+        `Supabaseの停止防止アクセス（読み取り）に失敗しました（status ${readRes.status}）: ${await readRes.text()}`,
+      );
+    }
+
+    const writeRes = await supabaseFetch(env, "keepalive?on_conflict=id", {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({ id: 1, last_ping_at: new Date().toISOString() }),
+    });
+    if (!writeRes.ok) {
+      console.error(
+        `Supabaseの停止防止アクセス（書き込み）に失敗しました（status ${writeRes.status}）: ${await writeRes.text()}`,
       );
       return;
     }
-    console.log("Supabaseの停止防止アクセスに成功しました");
+    if (readRes.ok) console.log("Supabaseの停止防止アクセスに成功しました");
   },
 } satisfies ExportedHandler<Env>;
 
