@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "supabase/migrations/**"
+      # ワークフロー自体を直した時も、未適用のマイグレーションを適用し直せるようにする
+      - ".github/workflows/db-migrations.yml"
 
 jobs:
   migrate:
@@ -12,9 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # latest にすると、メジャーバージョンアップ（v3で db push が既定でローカルDBに接続するよう変わった）で
+      # 予告なく失敗するため、ローカルの開発環境（package.json の supabase）と同じバージョンに固定する
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
 
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
