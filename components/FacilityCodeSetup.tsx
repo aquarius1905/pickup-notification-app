@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -14,6 +15,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { showErrorAlert } from "@/lib/error";
 import { registerFacilityCode } from "@/lib/facilityAuth";
 import { colors, inputStyle } from "@/lib/theme";
+
+// 施設コードは運営者が手作業で発行している。Google Playなどから入った人が
+// この画面で行き止まりにならないよう、申込フォームとマニュアルへの導線を出す
+const APPLY_FORM_URL = "https://forms.gle/eKQ53u9m4PKbbyPM8";
+const MANUAL_URL =
+  "https://docs.google.com/document/d/1Sm1awuFpttnb-HNm9Utt4viePGJhi4CeFMyLvNtR_7Q/edit?usp=sharing";
+
+async function openLink(url: string): Promise<void> {
+  try {
+    await Linking.openURL(url);
+  } catch (error) {
+    showErrorAlert(error);
+  }
+}
 
 type Props = {
   onRegistered: () => void;
@@ -72,6 +87,21 @@ export function FacilityCodeSetup({ onRegistered }: Props) {
             <Text style={styles.submitButtonText}>登録</Text>
           )}
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => openLink(APPLY_FORM_URL)}
+        >
+          <Text style={styles.linkText}>
+            施設コードをお持ちでない方（お申し込み）
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => openLink(MANUAL_URL)}
+        >
+          <Text style={styles.linkText}>使い方（職員向けマニュアル）</Text>
+        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -115,5 +145,15 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 16,
     fontWeight: "700",
+  },
+  linkButton: {
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  linkText: {
+    fontSize: 15,
+    color: colors.primary,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
