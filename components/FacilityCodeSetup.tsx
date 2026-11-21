@@ -16,7 +16,7 @@ import { showErrorAlert } from "@/lib/error";
 import { registerFacilityCode } from "@/lib/facilityAuth";
 import { colors, inputStyle } from "@/lib/theme";
 
-// 施設コードは運営者が手作業で発行している。Google Playなどから入った人が
+// 施設コードは運営者が手作業で発行している。施設コードを持たずにアプリを入れた人が
 // この画面で行き止まりにならないよう、申込フォームとマニュアルへの導線を出す
 const APPLY_FORM_URL = "https://forms.gle/eKQ53u9m4PKbbyPM8";
 const MANUAL_URL =
